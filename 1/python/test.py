@@ -21,7 +21,11 @@ class Lexer():
         self.lexer.add('comment-right', r'\*\)') # Call a second lexer when inside a comment.
 
         self.lexer.add('integer-literal', r'0x([0-9]|[a-f]|[A-F])+|[0-9]+')
-        self.lexer.add('keyword')
+        #self.lexer.add('keyword', ) Le faire ou garder une table et checker que c'est un keyword quand on appelle le lexer dans la boucle?
+        
+        self.lexer.add('type-identifier', r'[A-Z](([a-z]|[A-Z])|[0-9]|_)*')
+
+        self.lexer.add('object-identifier', r'[a-z](([a-z]|[A-Z])|[0-9]|_)*')
 
     def get_lexer(self):
         self._add_tokens()
