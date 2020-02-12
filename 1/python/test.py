@@ -7,25 +7,21 @@ class Lexer():
         self.lexer = LexerGenerator()
 
     def _add_tokens(self):
-        # Print
-        self.lexer.add('PRINT', r'print')
+        
+        self.lexer.add('lowercase-letter', r'[a-z]')
+        self.lexer.add('uppercase-letter', r'[A-Z]')
+        self.lexer.add('letter', r'[a-z]|[A-Z]')
+        self.lexer.add('bin-digit', r'0|1')
+        self.lexer.add('digit', r'[0-9]')
+        self.lexer.add('hex-digit', r'[0-9]|[a-f]|[A-F]')
 
-        # Parenthesis
-        self.lexer.add('OPEN_PAREN', r'\(')
-        self.lexer.add('CLOSE_PAREN', r'\)')
+        self.lexer.add('white-space', r'[ \x09\x0A\x0C\x0D]')
+        self.lexer.add('comment', r'\\\\')
+        self.lexer.add('comment-left', r'\(\*')
+        self.lexer.add('comment-right', r'\*\)') # Call a second lexer when inside a comment.
 
-        # Semi Colon
-        self.lexer.add('SEMI_COLON', r'\;')
-
-        # Operators
-        self.lexer.add('SUM', r'\+')
-        self.lexer.add('SUB', r'\-')
-
-        # Number
-        self.lexer.add('NUMBER', r'\d+')
-
-        # Ignore spaces
-        self.lexer.ignore(r'\s+')
+        self.lexer.add('integer-literal', r'0x([0-9]|[a-f]|[A-F])+|[0-9]+')
+        self.lexer.add('keyword')
 
     def get_lexer(self):
         self._add_tokens()
