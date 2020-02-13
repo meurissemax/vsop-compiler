@@ -27,6 +27,30 @@ class Lexer():
 
         self.lexer.add('object-identifier', r'[a-z](([a-z]|[A-Z])|[0-9]|_)*')
 
+        regular_char = r'[^\\]|\\[\x0D]'
+        escape_sequence = r'[btnr"\\]|x([0-9]|[a-f]|[A-F]){2}|[\x0A][ \x09]' # A vérifier dans des tests.
+        escaped_char = r'\\' + r'[' + escape_sequence + r']'
+        self.lexer.add('string-literal', r'\"['+ regular_char + r'|' + escaped_char + r']\"')
+        
+        self.lexer.add('lbrace', r'{')
+        self.lexer.add('rbrace', r'}')
+        self.lexer.add('lpar', r'(')
+        self.lexer.add('rpar', r')')
+        self.lexer.add('colon', r':')
+        self.lexer.add('semicolon', r';')
+        self.lexer.add('comma', r',')
+        self.lexer.add('plus', r'\+')
+        self.lexer.add('minus', r'-')
+        self.lexer.add('times', r'\*') ## OU EN FAIRE UN SEUL TOKEN ET GARDER UN TABLEAU. JE NE SAIS
+        self.lexer.add('div', r'\\')   ## PAS CE QUI EST LE MIEUX
+        self.lexer.add('pow', r'\^')
+        self.lexer.add('dot', r'\.')
+        self.lexer.add('equal', r'=')
+        self.lexer.add('lower', r'<')
+        self.lexer.add('lower-equal', r'<=')
+        self.lexer.add('assign', r'<-')
+
+
     def get_lexer(self):
         self._add_tokens()
 
