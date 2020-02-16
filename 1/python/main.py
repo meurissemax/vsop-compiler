@@ -12,7 +12,8 @@ Authors :
 # Libraries #
 #############
 
-from lexer import Lexer
+import ply.lex as lex
+from testLexer import ownLexer
 
 
 ########
@@ -20,31 +21,39 @@ from lexer import Lexer
 ########
 
 if __name__ == '__main__':
-    filename = 'test.vsop'
+    filename = '../tests/good/factorial.vsop'
 
     # Get the lexer
-    lexer = Lexer().get_lexer()
+    lexer = ownLexer()
 
     # Read input file, line by line (to save the information about line position)
-    with open('../tests/test.vsop', mode='r', encoding='ascii') as content_file:
+    with open(filename, mode='r', encoding='ascii') as content_file:
         lines = content_file.readlines()
 
     # Iterate on each line (i is the line number)
     for i, line in enumerate(lines):
         # Get all tokens of the line
-        tokens = lexer.lex(line)
+        lexer.input(line)
+
+        token = 0
+        tokens = []
+        while(token != None):
+            token = lexer.token()
+            tokens.append(token) # Faire en une seule étape, pour débugging ici
+            print(token)
 
         # Iterate on each token to print them or detect an error
-        try:
-            for token in tokens:
-                # To get the column number
-                pos = token.getsourcepos()
+        #try:
+        #    for token in tokens:
+        #        # To get the column number
+        #        #pos = token.getsourcepos()
+        #        print(token)
 
                 # Print the token
-                print(str(i + 1) + ',' + str(pos.idx) + ',' + str(token.gettokentype()))
-        except LexingError as err:
+        #        print(str(i + 1) + ',' + str(pos.idx) + ',' + str(token.gettokentype()))
+        #except LexingError as err:
             # To get the column number
-            pos = err.getsourcepos()
+        #    pos = err.getsourcepos()
 
             # Print the error
-            print(filename + ':' + str(i + 1) + ':' + str(pos.idx) + ': lexical error:')
+        #   print(filename + ':' + str(i + 1) + ':' + str(pos.idx) + ': lexical error:')
