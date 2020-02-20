@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 """
 INFO0085-1 - Compilers
 Project 1 : Lexical analysis
@@ -15,7 +17,7 @@ Authors :
 import argparse
 import utils
 
-from lexer import Lexer, find_column
+from lexer import Lexer
 
 
 #####################
@@ -54,18 +56,13 @@ if __name__ == '__main__':
             with open(filename, 'r', encoding='ascii') as f:
                 data = f.read()
                 data = data.replace('\t', '    ')
-                for element in data:
-                    print(repr(element))
 
-            # Lex the file content
-            lexer.input(data)
-            type_value = ('integer_literal', 'type_identifier', 'object_identifier', 'string_literal')
+            # Instantiate the lexer
+            lexer = Lexer(filename)
+            lexer.build()
 
-            for token in lexer:
-                if token.type in type_value:
-                    print('{},{},{},{}'.format(token.lineno, find_column(data, token), token.type.replace('_', '-'), token.value))
-                else:
-                    print('{},{},{}'.format(token.lineno, find_column(data, token), token.type.replace('_', '-')))
+            # Lex the content of the file
+            lexer.lex(data)
         else:
             utils.print_error('Extension of the input file must be .vsop')
     else:
