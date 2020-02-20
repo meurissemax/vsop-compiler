@@ -11,3 +11,7 @@
 ##########
 
 **/__pycache__/
+
+# Build project
+1/python/build/
+1/python/vsopc
