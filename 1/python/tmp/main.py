@@ -15,7 +15,7 @@ Authors :
 import argparse
 import utils
 
-from lexer import Lexer
+from lexer import Lexer, find_column
 
 
 #####################
@@ -53,6 +53,9 @@ if __name__ == '__main__':
             # Get the file content
             with open(filename, 'r', encoding='ascii') as f:
                 data = f.read()
+                data = data.replace('\t', '    ')
+                for element in data:
+                    print(repr(element))
 
             # Lex the file content
             lexer.input(data)
@@ -60,9 +63,9 @@ if __name__ == '__main__':
 
             for token in lexer:
                 if token.type in type_value:
-                    print('{},{},{},{}'.format(token.lineno, token.lexpos + 1, token.type.replace('_', '-'), token.value))
+                    print('{},{},{},{}'.format(token.lineno, find_column(data, token), token.type.replace('_', '-'), token.value))
                 else:
-                    print('{},{},{}'.format(token.lineno, token.lexpos + 1, token.type.replace('_', '-')))
+                    print('{},{},{}'.format(token.lineno, find_column(data, token), token.type.replace('_', '-')))
         else:
             utils.print_error('Extension of the input file must be .vsop')
     else:

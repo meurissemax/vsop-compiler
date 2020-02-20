@@ -91,16 +91,21 @@ def Lexer(filename):
     t_right_comment = r'\*\)'
     t_type_identifier = r'[A-Z](([a-z]|[A-Z])|[0-9]|_)*'
     t_object_identifier = r'[a-z](([a-z]|[A-Z])|[0-9]|_)*'
-    t_string_literal = r'\"([a-zA-Z0-9_\[\]; ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\n(\s|\t)))*\"'
-    t_ignore = ' \x09\x0A\x0C\x0D'
+
+    t_ignore = '[ \r\f\t]'
 
     ##############################
     # Token with special actions #
     ##############################
 
+    def t_string_literal(t): 
+        r'\"[^\"]*\"' # Faire le bon truc
+        t.lexer.lineno += t.value.count('\n') #vérifier que ça fait ce qu'on veut, normalement oui.
+        return t
+
     def t_integer_literal(t):
-        r'[0-9]+|0x([0-9]|[a-f]|[A-F])+'
-        t.value = int(t.value)
+        r'0x([0-9]|[a-f]|[A-F])+|[0-9]+'
+        t.value = int(t.value, 0)
 
         return t
 
@@ -121,16 +126,21 @@ def Lexer(filename):
         return t
 
     def t_newline(t):
-        r'[\0x0D]+'
-        t.lexer.lineno += len(t.value)
+        r'[\n]+'
+        t.lexer.lineno += t.value.count('\n')
 
     ##################
     # Error handling #
     ##################
 
     def t_error(t):
-        utils.print_error('{}:{}:{}: lexical error:'.format(filename, t.lineno, t.lexpos))
+        utils.print_error('{}:{}:{}: lexical error for character {}'.format(filename, t.lineno, t.lexpos, repr(t.value[0])))
         t.lexer.skip(1)
 
     # Build the lexer from my environment and return it    
     return lex.lex()
+
+
+def find_column(input, token):
+     line_start = input.rfind('\n', 0, token.lexpos) + 1
+     return (token.lexpos - line_start) + 1
