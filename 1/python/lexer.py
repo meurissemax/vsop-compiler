@@ -12,145 +12,135 @@ Authors :
 # Libraries #
 #############
 
+import utils
 import ply.lex as lex
 
 
-###########
-# Classes #
-###########
+####################
+# Global variables #
+####################
+
+base = (
+    'inline_comment',
+    'left_comment',
+    'right_comment',
+    'integer_literal',
+    'keyword',
+    'type_identifier',
+    'object_identifier',
+    'string_literal',
+    'operator'
+)
+
+keywords = (
+    'and',
+    'bool',
+    'class',
+    'do',
+    'else',
+    'extends',
+    'false',
+    'if',
+    'in',
+    'int32',
+    'isnull',
+    'let',
+    'new',
+    'not',
+    'string',
+    'then',
+    'true',
+    'unit',
+    'while'
+)
+
+operators = {
+    '<=': 'lower_equal',
+    '<-': 'assign',
+    '{': 'lbrace',
+    '}': 'rbrace',
+    '(': 'lpar',
+    ')': 'rpar',
+    ':': 'colon',
+    ';': 'semicolon',
+    ',': 'comma',
+    '+': 'plus',
+    '-': 'minus',
+    '*': 'times',
+    '/': 'div',
+    '^': 'pow',
+    '.': 'dot',
+    '=': 'equal',
+    '<': 'lower'
+}
+
+tokens = list(base) + list(keywords) + list(operators.values())
 
 
-class Lexer:
-    tokens = (
-            'bin_digit',
-            'digit',
-            'hex_digit',
-            'integer_literal',
-            'type_identifier',
-            'object_identifier',
-            'string_literal',
-            'operator',
-            'comment',
-            'comment_left',
-            'comment_right',
-            'keyword')
+#############
+# Functions #
+#############
 
-    regular_char = r'[^\\]|\\[\x0D]'
-    escape_sequence = r'[btnr"\\]|x([0-9]|[a-f]|[A-F]){2}|[\x0A][ \x09]' # A vérifier dans des tests.
-    escaped_char = r'\\' + r'[' + escape_sequence + r']'
+def Lexer(filename):
+    ###############
+    # Token regex #
+    ###############
 
-    t_integer_literal = r'0x([0-9]|[a-f]|[A-F])+|[0-9]+'
+    t_inline_comment = r'\/\/'
+    t_left_comment = r'\(\*'
+    t_right_comment = r'\*\)'
     t_type_identifier = r'[A-Z](([a-z]|[A-Z])|[0-9]|_)*'
     t_object_identifier = r'[a-z](([a-z]|[A-Z])|[0-9]|_)*'
-    t_string_literal = r'\"['+ regular_char + r'|' + escaped_char + r']\"'
-    t_operator = r'[{}():;,]|\+|-|\*|\\|\^|\.|=|<|<=|<-'
-    t_comment = r'\\\\'
-    t_comment_left = r'\(\*'
-    t_comment_right = r'\*\)'
 
-    t_ignore = ' \x09\x0A\x0C\x0D'
+    t_ignore = '[ \r\f\t]'
 
-    def t_bin_digit(t):
-        r'0|1'
-        t.value = int(t.value)
+    ##############################
+    # Token with special actions #
+    ##############################
+
+    def t_string_literal(t): 
+        r'\"[^\"]*\"' # Faire le bon truc
+        t.lexer.lineno += t.value.count('\n') #vérifier que ça fait ce qu'on veut, normalement oui.
         return t
 
-    def t_digit(t):
-        r'[0-9]'
-        t.value = int(t.value)
+    def t_integer_literal(t):
+        r'0x([0-9]|[a-f]|[A-F])+|[0-9]+'
+        t.value = int(t.value, 0)
+
         return t
-
-    def t_hex_digit(t):
-        r'[0-9]|[a-f]|[A-F]'
-        t.value = int(t.value)
-        return t
-
-    reserved = {
-    'and' : 'and',
-    'bool' : 'bool',
-    'class' : 'class',
-    'do' : 'do',
-    'else' : 'else',
-    'extends' : 'extends',
-    'false' : 'false',
-    'if' : 'if',
-    'in' : 'in',
-    'int32' : 'int32',
-    'isnull' : 'isnull',
-    'let' : 'let',
-    'new' : 'new',
-    'not' : 'not',
-    'string' : 'string',
-    'then' : 'then',
-    'true' : 'true',
-    'unit' : 'unit',
-    'while' : 'while'
-    }
-
-    tokens = list(tokens) + list(reserved.values())
 
     def t_keyword(t):
-        r'[a-z](([a-z]|[A-Z])|[0-9]|_)*' # Même que pour object identifier. Faire une bête table ?
-        t.type = reserved.get(t.value, 'keyword')
+        r'[a-z2-3]{2,}'
+
+        if t.value in keywords:
+            t.type = t.value
+
         return t
 
-    # Compute column.
-    #     input is the input text string
-    #     token is a token instance
-    def find_column(self, input, token):
-        line_start = input.rfind('\n', 0, token.lexpos) + 1
-        return (token.lexpos - line_start) + 1
+    def t_operator(t):
+        r'{|}|\(|\)|:|;|,|\+|-|\*|/|\^|\.|<=|<-|<|='
 
+        if t.value in operators:
+            t.type = operators[t.value]
 
-    # Define a rule so we can track line numbers
+        return t
+
     def t_newline(t):
-        r'\n+'
-        t.lexer.lineno += len(t.value)
+        r'[\n]+'
+        t.lexer.lineno += t.value.count('\n')
 
-    # Error handling rule
+    ##################
+    # Error handling #
+    ##################
+
     def t_error(t):
-        print("Illegal character '%s'" % t.value[0])
+        utils.print_error('{}:{}:{}: lexical error for character {}'.format(filename, t.lineno, t.lexpos, repr(t.value[0])))
         t.lexer.skip(1)
 
-     # EOF handling rule ??
+    # Build the lexer from my environment and return it    
+    return lex.lex()
 
-    def __init__(self):
 
-        self.op = {
-                    r'{' : 'lbrace',
-                    r'}' : 'rbrace',
-                    r'(' : 'lpar',
-                    r')' : 'rpar',
-                    r':' : 'colon',
-                    r';' : 'semicolon',
-                    r',' : 'comma',
-                    r'\+' : 'plus',
-                    r'-' : 'minus',
-                    r'\*' : 'times',
-                    r'/' : 'div',
-                    r'\^' : 'pow',
-                    r'\.' : 'dot',
-                    r'=' : 'equal',
-                    r'<' : 'lower',
-                    r'<=' : 'lower-equal',
-                    r'<-' : 'assign'
-                    }
-
-    def isKeyword(self, element):
-        return (element in self.keywords)
-
-    def whichOp(self, element):
-        if not element in self.op.keys():
-            # Raise exception ? Should not happen
-            pass
-        return self.op[element]
-
-    # Build the lexer
-    def build(self,**kwargs):
-        self.lexer = lex.lex(module=self, **kwargs)
-
-    def input(self, line):
-        self.lexer.input(line)
-
-    def token(self):
-        return self.lexer.token()
+def find_column(input, token):
+     line_start = input.rfind('\n', 0, token.lexpos) + 1
+     return (token.lexpos - line_start) + 1

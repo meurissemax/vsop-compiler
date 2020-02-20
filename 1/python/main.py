@@ -12,8 +12,17 @@ Authors :
 # Libraries #
 #############
 
-import ply.lex as lex
-from testLexer import ownLexer
+import argparse
+import utils
+
+from lexer import Lexer, find_column
+
+
+#####################
+# General variables #
+#####################
+
+VALID_EXT = '.vsop'
 
 
 ########
@@ -21,39 +30,43 @@ from testLexer import ownLexer
 ########
 
 if __name__ == '__main__':
-    filename = '../tests/good/factorial.vsop'
+    # Instantiate the parser (for executable arguments)
+    parser = argparse.ArgumentParser()
 
-    # Get the lexer
-    lexer = ownLexer()
+    # Add executable arguments
+    parser.add_argument('-lex', '--lex', help='path to the VSOP file to lex')
 
-    # Read input file, line by line (to save the information about line position)
-    with open(filename, mode='r', encoding='ascii') as content_file:
-        lines = content_file.readlines()
+    # Get arguments' value
+    args = parser.parse_args()
 
-    # Iterate on each line (i is the line number)
-    for i, line in enumerate(lines):
-        # Get all tokens of the line
-        lexer.input(line)
+    # Get the '-lex' argument value
+    if args.lex:
+        filename = args.lex
 
-        token = 0
-        tokens = []
-        while(token != None):
-            token = lexer.token()
-            tokens.append(token) # Faire en une seule étape, pour débugging ici
-            print(token)
+        # Check the filename extension
+        ext = filename[-len(VALID_EXT):]
 
-        # Iterate on each token to print them or detect an error
-        #try:
-        #    for token in tokens:
-        #        # To get the column number
-        #        #pos = token.getsourcepos()
-        #        print(token)
+        if ext == VALID_EXT:
+            # Create the lexer
+            lexer = Lexer(filename)
 
-                # Print the token
-        #        print(str(i + 1) + ',' + str(pos.idx) + ',' + str(token.gettokentype()))
-        #except LexingError as err:
-            # To get the column number
-        #    pos = err.getsourcepos()
+            # Get the file content
+            with open(filename, 'r', encoding='ascii') as f:
+                data = f.read()
+                data = data.replace('\t', '    ')
+                for element in data:
+                    print(repr(element))
 
-            # Print the error
-        #   print(filename + ':' + str(i + 1) + ':' + str(pos.idx) + ': lexical error:')
+            # Lex the file content
+            lexer.input(data)
+            type_value = ('integer_literal', 'type_identifier', 'object_identifier', 'string_literal')
+
+            for token in lexer:
+                if token.type in type_value:
+                    print('{},{},{},{}'.format(token.lineno, find_column(data, token), token.type.replace('_', '-'), token.value))
+                else:
+                    print('{},{},{}'.format(token.lineno, find_column(data, token), token.type.replace('_', '-')))
+        else:
+            utils.print_error('Extension of the input file must be .vsop')
+    else:
+        utils.print_error('Usage : vsopc -lex <SOURCE-FILE>')
