@@ -20,6 +20,7 @@ Authors :
 # Libraries #
 #############
 
+import re
 import utils
 import ply.lex as lex
 
@@ -33,8 +34,9 @@ class Lexer():
     # Constructor #
     ###############
 
-    def __init__(self, filename):
+    def __init__(self, filename, data):
         self.filename = filename
+        self.data = data
 
         self.base = (
             'inline_comment',
@@ -114,6 +116,13 @@ class Lexer():
         r'\"[^\"]*\"'
         t.lexer.lineno += t.value.count('\n')
 
+        t.value = re.sub(r'(\s\s|\s\\\s|\n)*', '', t.value)
+
+        t.value = t.value.replace(r'\b', r'\x08')
+        t.value = t.value.replace(r'\t', r'\x09')
+        t.value = t.value.replace(r'\n', r'\x0a')
+        t.value = t.value.replace(r'\r', r'\x0d')
+
         return t
 
     def t_integer_literal(self, t):
@@ -158,6 +167,15 @@ class Lexer():
 
         t.lexer.skip(1)
 
+    ########################
+    # Additional functions #
+    ########################
+
+    def find_column(self, t):
+        line_start = self.data.rfind('\n', 0, t.lexpos) + 1
+
+        return (t.lexpos - line_start) + 1
+
     ###########################
     # Build and use the lexer #
     ###########################
@@ -165,8 +183,8 @@ class Lexer():
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
-    def lex(self, data):
-        self.lexer.input(data)
+    def lex(self):
+        self.lexer.input(self.data)
 
         type_value = (
             'integer_literal',
@@ -176,12 +194,15 @@ class Lexer():
             )
 
         for token in self.lexer:
+            t_column = self.find_column(token)
+            t_type = token.type.replace('_', '-')
+
             if token.type in type_value:
                 print(
                     '{},{},{},{}'.format(
                         token.lineno,
-                        find_column(data, token),
-                        token.type.replace('_', '-'),
+                        t_column,
+                        t_type,
                         token.value
                         )
                     )
@@ -189,13 +210,7 @@ class Lexer():
                 print(
                     '{},{},{}'.format(
                         token.lineno,
-                        find_column(data, token),
-                        token.type.replace('_', '-')
+                        t_column,
+                        t_type
                         )
                     )
-
-
-def find_column(input, token):
-    line_start = input.rfind('\n', 0, token.lexpos) + 1
-
-    return (token.lexpos - line_start) + 1

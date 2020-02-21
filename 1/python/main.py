@@ -49,20 +49,17 @@ if __name__ == '__main__':
         ext = filename[-len(VALID_EXT):]
 
         if ext == VALID_EXT:
-            # Create the lexer
-            lexer = Lexer(filename)
-
             # Get the file content
             with open(filename, 'r', encoding='ascii') as f:
                 data = f.read()
                 data = data.replace('\t', '    ')
 
             # Instantiate the lexer
-            lexer = Lexer(filename)
+            lexer = Lexer(filename, data)
             lexer.build()
 
             # Lex the content of the file
-            lexer.lex(data)
+            lexer.lex()
         else:
             utils.print_error('Extension of the input file must be .vsop')
     else:

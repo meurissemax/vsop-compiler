@@ -16,7 +16,12 @@ clean-exec:
 	rm -f -r vsopc
 
 # Install any software needed to build the compiler
+# (we suppose that python3 is already installed)
 install-tools:
+	sudo apt-get install python-pip
+	sudo pip install argparse
+	sudo pip install ply
+	sudo pip install pyinstaller
 
 # Build the compiler
 vsopc:
