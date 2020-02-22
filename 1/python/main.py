@@ -14,8 +14,8 @@ Authors :
 # Libraries #
 #############
 
-import argparse
 import utils
+import argparse
 
 from lexer import Lexer
 
@@ -32,33 +32,29 @@ VALID_EXT = '.vsop'
 ########
 
 if __name__ == '__main__':
-    # Instantiate the parser (for executable arguments)
+    # We instantiate the parser (for executable arguments)
     parser = argparse.ArgumentParser()
 
-    # Add executable arguments
+    # We add executable arguments
     parser.add_argument('-lex', '--lex', help='path to the VSOP file to lex')
 
-    # Get arguments' value
+    # We get arguments' value
     args = parser.parse_args()
 
-    # Get the '-lex' argument value
+    # If there is '-lex' argument value
     if args.lex:
+        # We get the '-lex' argument value
         filename = args.lex
 
-        # Check the filename extension
+        # We check the filename extension
         ext = filename[-len(VALID_EXT):]
 
         if ext == VALID_EXT:
-            # Get the file content
-            with open(filename, 'r', encoding='ascii') as f:
-                data = f.read()
-                data = data.replace('\t', '    ')
-
-            # Instantiate the lexer
-            lexer = Lexer(filename, data)
+            # We instantiate and build the lexer
+            lexer = Lexer(filename)
             lexer.build()
 
-            # Lex the content of the file
+            # We lex the content of the file
             lexer.lex()
         else:
             utils.print_error('Extension of the input file must be .vsop')

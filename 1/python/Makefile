@@ -18,10 +18,11 @@ clean-exec:
 # Install any software needed to build the compiler
 # (we suppose that python3 is already installed)
 install-tools:
-	sudo apt-get install python-pip
-	sudo pip install argparse
-	sudo pip install ply
-	sudo pip install pyinstaller
+	sudo apt-get install --yes python3-pip
+	sudo apt-get install --yes python-setuptools
+	yes | sudo pip3 install argparse
+	yes | sudo pip3 install ply
+	yes | sudo pip3 install pyinstaller
 
 # Build the compiler
 vsopc:
@@ -33,7 +34,3 @@ vsopc:
 		--name vsopc \
 		--specpath ./build \
 		--workpath ./build \
-
-# Make test
-test:
-	./vsopc -lex ../tests/personal/brief.vsop

@@ -22,5 +22,10 @@ import sys
 #############
 
 def print_error(*args, **kwargs):
-    """Print a message in the stderr."""
+    """
+    Print an error in stderr and stop the
+    execution with an error code.
+    """
+
     print(*args, file=sys.stderr, **kwargs)
+    sys.exit(1)
