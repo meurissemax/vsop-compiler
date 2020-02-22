@@ -1,0 +1,10 @@
+// test of comment
+42
+(* another test of comment *)
+
+(*
+int32 <- 42
+test
+*)
+
+int32 <- 56
