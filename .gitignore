@@ -11,6 +11,7 @@
 ##########
 
 **/__pycache__/
+*.pyc
 
 # Build project
 1/python/build/
