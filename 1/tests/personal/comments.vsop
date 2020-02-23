@@ -1,4 +1,5 @@
-// test of comment
+// 45
+(* test of comment *)
 42
 (* another test of comment *)
 
