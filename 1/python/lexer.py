@@ -182,9 +182,6 @@ class Lexer():
                 # this token is an error
                 self.__print_error(t.lineno, self.__find_column(t), 'no corresponding opened comment')
 
-                # Skip the character and go to the next
-                t.lexer.skip(1)
-
             # If we are in a multiple-line comment,
             # we pop the corresponding opening token
             # (the last one that has matched)
@@ -244,7 +241,6 @@ class Lexer():
                 return t
             except ValueError:
                 self.__print_error(t.lineno, self.__find_column(t), 'invalid hexadecimal integer {}'.format(t.value))
-                t.lexer.skip(1)
         else:
 
             # We check if the decimal value
@@ -255,12 +251,11 @@ class Lexer():
                 return t
             except ValueError:
                 self.__print_error(t.lineno, self.__find_column(t), 'invalid decimal integer {}'.format(t.value))
-                t.lexer.skip(1)
 
     def t_string_literal(self, t):
         r'\"(?:[^\"\\]|\\.|\\\n)*\"'
 
-        # We returns the processed string
+        # We return the processed string
         return self.__string_processing(t)
 
     def t_non_terminated_string_literal(self, t):
@@ -304,7 +299,6 @@ class Lexer():
         # If we are in a single-line comment, a new
         # line ends the comment and push back the
         # lexer to its initial state
-
         if self.__is_s_comment():
             self.__s_comments = False
             t.lexer.begin('INITIAL')
@@ -315,16 +309,17 @@ class Lexer():
 
     def __print_error(self, lineno, column, message):
         """
-        Print an error on stderr and changes the
-        status of the lexer.
+        Print an error on stderr in the right format
+        and exit the lexer.
         """
 
         utils.print_error('{}:{}:{}: lexical error: {}'.format(self.__filename, lineno, column, message))
 
     def t_ANY_error(self, t):
         # If we are in a comment, we don't print errors
-        # (because we will have a lot of error since
-        # token are not recognised in comment)
+        # (the only possible error is due to a non-closed
+        # comment and this error is printed in the
+        # corresponding function)
         if not self.__is_comment():
             self.__print_error(t.lineno, self.__find_column(t), 'invalid character {}'.format(repr(t.value[0])))
 
@@ -355,10 +350,11 @@ class Lexer():
 
         t.lexer.lineno += t.value.count('\n')
 
-        # We remove (valid) newline character for string (\)
-        t.value = re.sub(r'(\\\n( )*|\\\n)', '', t.value)
+        # We remove valid newlines if any (a newline
+        # preceded by \) and after that, we check if there
+        # is still a line feed (which could be invalid)
+        t.value = re.sub(r'(\\\n(\s)*|\\\n)', '', t.value)
 
-        # We check if the treated string contains line feed
         if '\n' in t.value:
             self.__print_error(t.lineno, self.__find_column(t) + t.value.find('\n'), 'string contains line feed.')
 
@@ -367,22 +363,74 @@ class Lexer():
             splits = t.value.split('\x00')
             self.__print_error(t.lineno, self.__find_column(t) + len(splits[0]), 'string contains null character.')
 
-        # We escape special characters
+        # We escape special characters (\b, \t, ect)
+        # and we check if there are characters that
+        # have to be escaped (character with byte
+        # value not in range(32, 127))
+        t.value = t.value.replace(r'\"', r'\x22')
+        t.value = t.value.replace(r'\\', r'\x5c')
+
         t.value = t.value.replace(r'\b', r'\x08')
         t.value = t.value.replace(r'\t', r'\x09')
         t.value = t.value.replace(r'\n', r'\x0a')
         t.value = t.value.replace(r'\r', r'\x0d')
 
-        t.value = t.value.replace(r'\"', r'\x22')
-        t.value = t.value.replace(r'\\', r'\x5c')
+        for char in t.value:
+            c_byte = ord(char)
 
-        # We check if the treated string contains an unknow escaped character
-        if t.value.find('\\') is not -1:
-            pos = t.value.find('\\')
-            escaped = t.value[pos:pos + 4]
+            if c_byte not in range(32, 127):
+                c_hex = format(c_byte, 'x')
 
-            if escaped not in (r'\x08', r'\x09', r'\x0a', r'\x0d', r'\x22', r'\x5c'):
-                self.__print_error(t.lineno, self.__find_column(t) + pos, 'unknow escaped character.')
+                if len(c_hex) == 1:
+                    t.value = t.value.replace(char, '\\x0{}'.format(c_hex))
+                else:
+                    t.value = t.value.replace(char, '\\x{}'.format(c_hex))
+
+        # Now that all characters are normally escaped,
+        # we iterate over each escaped sequences to check
+        # if there is invalid escaped sequences, null
+        # character or escaped sequences to replace
+        to_replace = list()
+        escaped = [m.start() for m in re.finditer(r'\\', t.value)]
+
+        for pos in escaped:
+            base = t.value[pos + 1]
+
+            # Hexadecimal escaped sequence
+            if base == 'x':
+                hex_value = t.value[pos + 2:pos + 4]
+
+                # Null character (invalid)
+                if hex_value == '00':
+                    self.__print_error(t.lineno, self.__find_column(t) + pos, 'string contains null character.')
+
+                # We get the byte value of the
+                # hexadecimal sequence (if valid)
+                try:
+                    byte_value = int('0x{}'.format(hex_value), 0)
+                except ValueError:
+                    self.__print_error(t.lineno, self.__find_column(t) + pos, 'invalid hexadecimal escaped sequence.')
+
+                # We check if we have to replace
+                # the escaped sequence
+                if byte_value in range(32, 127):
+
+                    # Exceptions for \" and \\
+                    if hex_value != '22' and hex_value != '5c':
+                        to_replace.append(hex_value)
+
+            # Not hexadecimal escaped sequence
+            # (necessarily invalid)
+            else:
+                self.__print_error(t.lineno, self.__find_column(t) + pos, 'unknow escaped sequence.')
+
+        # We replace hexadecimal sequences
+        # that have to be replaced
+        for hex_value in to_replace:
+            byte_value = int('0x{}'.format(hex_value), 0)
+            char = chr(byte_value)
+
+            t.value = t.value.replace(r'\x{}'.format(hex_value), char)
 
         return t
 

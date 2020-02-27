@@ -4,8 +4,11 @@
 (* another test of comment *)
 
 (*
+this is a comment
+
 int32 <- 42
-test
+
+still
 *)
 
 int32 <- 56

@@ -1,0 +1,5 @@
+"\x66oo\\bar\t\"N M\"\n"
+"valid string \\ \b with \n 	 espace sequences \x66 \x06 "
+
+"string with an error\
+ in a \k newline"
