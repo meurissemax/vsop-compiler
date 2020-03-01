@@ -353,13 +353,13 @@ class Lexer():
         # We remove valid newlines if any (a newline
         # preceded by \) and after that, we check if there
         # is still a line feed (which could be invalid)
-        t.value = re.sub(r'(\\\n(\s)*|\\\n)', '', t.value)
+        t.value = re.sub(r'(\\\n([\t\b\r])*|\\\n)', '', t.value)
 
         if '\n' in t.value:
             self.__print_error(t.lineno, self.__find_column(t) + t.value.find('\n'), 'string contains line feed.')
 
         # We check if the treated string contains null character
-        if len(t.value.split('\x00')) is not 1:
+        if len(t.value.split('\x00')) != 1:
             splits = t.value.split('\x00')
             self.__print_error(t.lineno, self.__find_column(t) + len(splits[0]), 'string contains null character.')
 
