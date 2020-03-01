@@ -8,6 +8,12 @@ Authors :
     - Valentin Vermeylen
 """
 
+# Remark / TO-DO for the future : we have realized that, when we have an error
+# in a multi-line string, we do not report it at the right position because we
+# have flattened the string beforehand. However, changing that would require us
+# to re-engineer the way we treat strings. Thus, we have decided to rather
+# provide an explicit error message and to try to solve that later in the year.
+
 #############
 # Libraries #
 #############
@@ -200,9 +206,9 @@ class Lexer():
     # Token defintion #
     ###################
 
-    # Token are ordered by priority.
+    # Tokens are ordered by priority.
     # It means that the first token (and so
-    # the first regex) will be test before the
+    # the first regex) will be tested before the
     # second, etc.
 
     # Characters to ignore during lexing
@@ -211,7 +217,7 @@ class Lexer():
     def t_identifier(self, t):
         r'[a-z](([a-z]|[A-Z])|[0-9]|_)*'
 
-        # Identifer can be keyword or object identifier,
+        # Identifier can be keyword or object identifier,
         # so we have to check
         if t.value in self.__keywords:
             t.type = t.value
@@ -228,7 +234,7 @@ class Lexer():
     def t_integer_literal(self, t):
         r'([0-9]|0x)([0-9]|[a-z]|[A-Z])*'
 
-        # We check if the value is an decimal or
+        # We check if the value is a decimal or
         # hexadecimal value in order to make a
         # clean conversion
         if t.value[:2] == '0x':
@@ -262,7 +268,7 @@ class Lexer():
         r'\"(?:[^\"\\]|\\.|\\\n)*'
 
         # We process the string (to check if there is an error)
-        # but we do not return her because we know that if there
+        # but we do not return here because we know that if there
         # is no error during processing, there is still an error
         # due to the fact that we are in the case of a non-
         # terminated string
@@ -278,7 +284,7 @@ class Lexer():
         # '<' and '=' in the regex to be sure
         # that they match before
 
-        # Since the regex "hardcode" all the operators,
+        # Since the regex "hardcodes" all the operators,
         # we don't really have to check if the value
         # is effectively in the operators list
         t.type = self.__operators[t.value]
@@ -297,7 +303,7 @@ class Lexer():
         t.lexer.lineno += t.value.count('\n')
 
         # If we are in a single-line comment, a new
-        # line ends the comment and push back the
+        # line ends the comment and pushes back the
         # lexer to its initial state
         if self.__is_s_comment():
             self.__s_comments = False
@@ -309,8 +315,8 @@ class Lexer():
 
     def __print_error(self, lineno, column, message):
         """
-        Print an error on stderr in the right format
-        and exit the lexer.
+        Prints an error on stderr in the right format
+        and exits the lexer.
         """
 
         utils.print_error('{}:{}:{}: lexical error: {}'.format(self.__filename, lineno, column, message))
@@ -343,9 +349,9 @@ class Lexer():
 
     def __string_processing(self, t):
         """
-        Process a string literal according to
+        Processes a string literal according to
         the brief (replace valid newline character,
-        escape character and check unknow character).
+        escaped character and check unknow character).
         """
 
         t.lexer.lineno += t.value.count('\n')
@@ -353,7 +359,7 @@ class Lexer():
         # We remove valid newlines if any (a newline
         # preceded by \) and after that, we check if there
         # is still a line feed (which could be invalid)
-        t.value = re.sub(r'(\\\n([\t\b\r])*|\\\n)', '', t.value)
+        t.value = re.sub(r'(\\\n([\t\b\r ])*|\\\n)', '', t.value)
 
         if '\n' in t.value:
             self.__print_error(t.lineno, self.__find_column(t) + t.value.find('\n'), f'string {t.value} contains line feed.')
@@ -388,8 +394,8 @@ class Lexer():
 
         # Now that all characters are normally escaped,
         # we iterate over each escaped sequences to check
-        # if there is invalid escaped sequences, null
-        # character or escaped sequences to replace
+        # if there are invalid escaped sequences, null
+        # characters or escaped sequences to replace
         to_replace = list()
         escaped = [m.start() for m in re.finditer(r'\\', t.value)]
 
@@ -422,7 +428,7 @@ class Lexer():
             # Not hexadecimal escaped sequence
             # (necessarily invalid)
             else:
-                self.__print_error(t.lineno, self.__find_column(t) + pos, f'unknow escaped sequence \{base} in string {t.value}.')
+                self.__print_error(t.lineno, self.__find_column(t) + pos, f'unknow escaped sequence {base} in string {t.value}.')
 
         # We replace hexadecimal sequences
         # that have to be replaced
@@ -442,13 +448,13 @@ class Lexer():
         self.lexer = lex.lex(module=self, **kwargs)
 
     def lex(self):
-        # Give the data as input to the lexer
+        # We give the data as input to the lexer
         self.lexer.input(self.__data)
 
         # Token classes for which we want to display the value
         type_value = ('integer_literal', 'type_identifier', 'object_identifier', 'string_literal')
 
-        # Tokenize
+        # We tokenize
         while True:
             token = self.lexer.token()
 
@@ -463,11 +469,11 @@ class Lexer():
 
                 break
 
-            # Get column and type of the token
+            # We get column and type of the token
             t_column = self.__find_column(token)
             t_type = token.type.replace('_', '-')
 
-            # Print the token (in the right format)
+            # We print the token (in the right format)
             if token.type in type_value:
                 print('{},{},{},{}'.format(token.lineno, t_column, t_type, token.value))
             else:
