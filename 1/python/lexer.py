@@ -356,12 +356,12 @@ class Lexer():
         t.value = re.sub(r'(\\\n([\t\b\r])*|\\\n)', '', t.value)
 
         if '\n' in t.value:
-            self.__print_error(t.lineno, self.__find_column(t) + t.value.find('\n'), 'string contains line feed.')
+            self.__print_error(t.lineno, self.__find_column(t) + t.value.find('\n'), f'string {t.value} contains line feed.')
 
         # We check if the treated string contains null character
         if len(t.value.split('\x00')) != 1:
             splits = t.value.split('\x00')
-            self.__print_error(t.lineno, self.__find_column(t) + len(splits[0]), 'string contains null character.')
+            self.__print_error(t.lineno, self.__find_column(t) + len(splits[0]), f'string {t.value} contains null character.')
 
         # We escape special characters (\b, \t, ect)
         # and we check if there are characters that
@@ -402,14 +402,14 @@ class Lexer():
 
                 # Null character (invalid)
                 if hex_value == '00':
-                    self.__print_error(t.lineno, self.__find_column(t) + pos, 'string contains null character.')
+                    self.__print_error(t.lineno, self.__find_column(t) + pos, f'string {t.value} contains null character.')
 
                 # We get the byte value of the
                 # hexadecimal sequence (if valid)
                 try:
                     byte_value = int('0x{}'.format(hex_value), 0)
                 except ValueError:
-                    self.__print_error(t.lineno, self.__find_column(t) + pos, 'invalid hexadecimal escaped sequence.')
+                    self.__print_error(t.lineno, self.__find_column(t) + pos, f'invalid hexadecimal escaped sequence {hex_value} in string {t.value}.')
 
                 # We check if we have to replace
                 # the escaped sequence
@@ -422,7 +422,7 @@ class Lexer():
             # Not hexadecimal escaped sequence
             # (necessarily invalid)
             else:
-                self.__print_error(t.lineno, self.__find_column(t) + pos, 'unknow escaped sequence.')
+                self.__print_error(t.lineno, self.__find_column(t) + pos, f'unknow escaped sequence \{base} in string {t.value}.')
 
         # We replace hexadecimal sequences
         # that have to be replaced
