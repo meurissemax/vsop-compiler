@@ -14,5 +14,5 @@
 *.pyc
 
 # Build project
-1/python/build/
-1/python/vsopc
+vsop-compiler/code/build/
+vsop-compiler/code/vsopc
