@@ -27,7 +27,7 @@ import ply.lex as lex
 # Classes #
 ###########
 
-class Lexer():
+class Lexer:
     ###############
     # Constructor #
     ###############
@@ -46,69 +46,69 @@ class Lexer():
         # We define base tokens
         self.__base = (
             # Unoffical token names (just to detect comment internally)
-            'inline_comment',
-            'left_comment',
-            'right_comment',
+            'INLINE_COMMENT',
+            'LEFT_COMMENT',
+            'RIGHT_COMMENT',
 
             # Official token names
-            'integer_literal',
-            'type_identifier',
-            'object_identifier',
-            'string_literal',
-            'operator',
+            'INTEGER_LITERAL',
+            'TYPE_IDENTIFIER',
+            'OBJECT_IDENTIFIER',
+            'STRING_LITERAL',
+            'OPERATOR',
 
             # Special tokens
-            'identifier',
-            'non_terminated_string_literal'
+            'IDENTIFIER',
+            'NON_TERMINATED_STRING_LITERAL'
         )
 
         # We define keywords
-        self.__keywords = (
-            'and',
-            'bool',
-            'class',
-            'do',
-            'else',
-            'extends',
-            'false',
-            'if',
-            'in',
-            'int32',
-            'isnull',
-            'let',
-            'new',
-            'not',
-            'string',
-            'then',
-            'true',
-            'unit',
-            'while'
-        )
+        self.__keywords = {
+            'and': 'AND',
+            'bool': 'BOOL',
+            'class': 'CLASS',
+            'do': 'DO',
+            'else': 'ELSE',
+            'extends': 'EXTENDS',
+            'false': 'FALSE',
+            'if': 'IF',
+            'in': 'IN',
+            'int32': 'INT32',
+            'isnull': 'ISNULL',
+            'let': 'LET',
+            'new': 'NEW',
+            'not': 'NOT',
+            'string': 'STRING',
+            'then': 'THEN',
+            'true': 'TRUE',
+            'unit': 'UNIT',
+            'while': 'WHILE'
+        }
 
         # We define operators
         self.__operators = {
-            '{': 'lbrace',
-            '}': 'rbrace',
-            '(': 'lpar',
-            ')': 'rpar',
-            ':': 'colon',
-            ';': 'semicolon',
-            ',': 'comma',
-            '+': 'plus',
-            '-': 'minus',
-            '*': 'times',
-            '/': 'div',
-            '^': 'pow',
-            '.': 'dot',
-            '=': 'equal',
-            '<': 'lower',
-            '<=': 'lower_equal',
-            '<-': 'assign',
+            '{': 'LBRACE',
+            '}': 'RBRACE',
+            '(': 'LPAR',
+            ')': 'RPAR',
+            ':': 'COLON',
+            ';': 'SEMICOLON',
+            ',': 'COMMA',
+            '+': 'PLUS',
+            '-': 'MINUS',
+            '*': 'TIMES',
+            '/': 'DIV',
+            '^': 'POW',
+            '.': 'DOT',
+            '=': 'EQUAL',
+            '<': 'LOWER',
+            '<=': 'LOWER_EQUAL',
+            '<-': 'ASSIGN',
         }
 
         # We create the full token list
         self.tokens = list(self.__base)
-        self.tokens += list(self.__keywords)
+        self.tokens += list(self.__keywords.values())
         self.tokens += list(self.__operators.values())
 
         # We set a possible state of the lexer (to handle
@@ -149,7 +149,7 @@ class Lexer():
 
         return self.__is_s_comment() or self.__is_m_comment()
 
-    def t_ANY_inline_comment(self, t):
+    def t_ANY_INLINE_COMMENT(self, t):
         r'\/\/'
 
         # We only consider the token as an
@@ -161,7 +161,7 @@ class Lexer():
 
         pass
 
-    def t_ANY_left_comment(self, t):
+    def t_ANY_LEFT_COMMENT(self, t):
         r'\(\*'
 
         # If we are not already in a single-line
@@ -173,7 +173,7 @@ class Lexer():
 
         pass
 
-    def t_ANY_right_comment(self, t):
+    def t_ANY_RIGHT_COMMENT(self, t):
         r'\*\)'
 
         # We check if we are not already in a
@@ -214,24 +214,24 @@ class Lexer():
     # Characters to ignore during lexing
     t_ANY_ignore = ' \r\f\t'
 
-    def t_identifier(self, t):
+    def t_IDENTIFIER(self, t):
         r'[a-z](([a-z]|[A-Z])|[0-9]|_)*'
 
         # Identifier can be keyword or object identifier,
         # so we have to check
         if t.value in self.__keywords:
-            t.type = t.value
+            t.type = self.__keywords[t.value]
         else:
-            t.type = 'object_identifier'
+            t.type = 'OBJECT_IDENTIFIER'
 
         return t
 
-    def t_type_identifier(self, t):
+    def t_TYPE_IDENTIFIER(self, t):
         r'[A-Z](([a-z]|[A-Z])|[0-9]|_)*'
 
         return t
 
-    def t_integer_literal(self, t):
+    def t_INTEGER_LITERAL(self, t):
         r'([0-9]|0x)([0-9]|[a-z]|[A-Z])*'
 
         # We check if the value is a decimal or
@@ -258,13 +258,13 @@ class Lexer():
             except ValueError:
                 self.__print_error(t.lineno, self.__find_column(t), 'invalid decimal integer {}'.format(t.value))
 
-    def t_string_literal(self, t):
+    def t_STRING_LITERAL(self, t):
         r'\"(?:[^\"\\]|\\.|\\\n)*\"'
 
         # We return the processed string
         return self.__string_processing(t)
 
-    def t_non_terminated_string_literal(self, t):
+    def t_NON_TERMINATED_STRING_LITERAL(self, t):
         r'\"(?:[^\"\\]|\\.|\\\n)*'
 
         # We process the string (to check if there is an error)
@@ -277,7 +277,7 @@ class Lexer():
         # We print the error of the non-terminated string
         self.__print_error(t.lineno, self.__find_column(t), 'string non terminated before end of file.')
 
-    def t_operator(self, t):
+    def t_OPERATOR(self, t):
         r'{|}|\(|\)|:|;|,|\+|-|\*|/|\^|\.|<=|<-|<|='
 
         # Remark : we put '<=' and '<-' before
@@ -447,12 +447,15 @@ class Lexer():
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
+    def export(self):
+        return self.lexer
+
     def lex(self):
         # We give the data as input to the lexer
         self.lexer.input(self.__data)
 
         # Token classes for which we want to display the value
-        type_value = ('integer_literal', 'type_identifier', 'object_identifier', 'string_literal')
+        type_value = ('INTEGER_LITERAL', 'TYPE_IDENTIFIER', 'OBJECT_IDENTIFIER', 'STRING_LITERAL')
 
         # We tokenize
         while True:
@@ -475,6 +478,6 @@ class Lexer():
 
             # We print the token (in the right format)
             if token.type in type_value:
-                print('{},{},{},{}'.format(token.lineno, t_column, t_type, token.value))
+                print('{},{},{},{}'.format(token.lineno, t_column, t_type.lower(), token.value))
             else:
-                print('{},{},{}'.format(token.lineno, t_column, t_type))
+                print('{},{},{}'.format(token.lineno, t_column, t_type.lower()))
