@@ -21,6 +21,18 @@ import sys
 # Functions #
 #############
 
+def check_filename(filename, valid_ext):
+    if filename is None:
+        print_error('Invalid filename')
+
+    ext = filename[-len(valid_ext):]
+
+    if ext != valid_ext:
+        print_error('Extension of the input file must be .vsop')
+
+    return filename
+
+
 def print_error(*args, **kwargs):
     """
     Print an error in stderr and stop the

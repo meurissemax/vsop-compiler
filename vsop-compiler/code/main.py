@@ -18,6 +18,7 @@ import utils
 import argparse
 
 from lexer import Lexer
+from parser import Parser
 
 
 #####################
@@ -33,30 +34,43 @@ VALID_EXT = '.vsop'
 
 if __name__ == '__main__':
     # We instantiate the parser (for executable arguments)
-    parser = argparse.ArgumentParser()
+    arg_parser = argparse.ArgumentParser()
 
     # We add executable arguments
-    parser.add_argument('-lex', '--lex', help='path to the VSOP file to lex')
+    arg_parser.add_argument('-lex', '--lex', help='path to the VSOP file to lex')
+    arg_parser.add_argument('-parse', '--parse', help='path to the VSOP file to parse')
 
     # We get arguments' value
-    args = parser.parse_args()
+    args = arg_parser.parse_args()
 
     # If there is '-lex' argument value
     if args.lex:
         # We get the '-lex' argument value
-        filename = args.lex
+        filename = utils.check_filename(args.lex, VALID_EXT)
 
-        # We check the filename extension
-        ext = filename[-len(VALID_EXT):]
+        # We instantiate and build the lexer
+        lexer = Lexer(filename)
+        lexer.build()
 
-        if ext == VALID_EXT:
-            # We instantiate and build the lexer
-            lexer = Lexer(filename)
-            lexer.build()
+        # We lex the content of the file
+        lexer.lex()
 
-            # We lex the content of the file
-            lexer.lex()
-        else:
-            utils.print_error('Extension of the input file must be .vsop')
-    else:
-        utils.print_error('Usage : vsopc -lex <SOURCE-FILE>')
+    # If there is '-parse' argument value
+    if args.parse:
+        # We get the '-parse' argument value
+        filename = utils.check_filename(args.parse, VALID_EXT)
+
+        # We instantiate and build the lexer
+        lexer = Lexer(filename)
+        lexer.build()
+
+        # We instantiate and build the parser
+        parser = Parser(filename)
+        parser.build()
+
+        # We parse the content of the file
+        parser.parse(lexer=lexer.export())
+
+    # If there is neither '-lex' or '-parse' argument value
+    if not args.lex and not args.parse:
+        utils.print_error('Usage : vsopc [-lex|-parse] <SOURCE-FILE>')
