@@ -447,8 +447,8 @@ class Lexer:
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
-    def export(self):
-        return self.lexer
+    def get_tokens(self):
+        return self.tokens
 
     def lex(self):
         # We give the data as input to the lexer

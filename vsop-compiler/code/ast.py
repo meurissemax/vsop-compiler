@@ -32,7 +32,7 @@ class Program(Node):
 
 
 class Class(Node):
-    def __init__(self, name, parent = 'Object'):
+    def __init__(self, name, parent='Object'):
         self.name = name
         self.parent = parent
         self.fields = []
@@ -46,7 +46,7 @@ class Class(Node):
 
         output += '], ['
 
-        for m in self.method:
+        for m in self.methods:
             output += str(m) + ', '
 
         return output + '])'
@@ -65,9 +65,9 @@ class Field(Node):
         self.init_expr = init_expr
 
     def __str__(self):
-        output = 'Field(' + self.name + ', ' + self._type
+        output = 'Field(' + self.name + ', ' + self.type
 
-        if init_expr is not None:
+        if self.init_expr is not None:
             output += ', ' + str(self.init_expr)
 
         return output + ')'

@@ -65,11 +65,11 @@ if __name__ == '__main__':
         lexer.build()
 
         # We instantiate and build the parser
-        parser = Parser(filename)
+        parser = Parser(filename, lexer.tokens)
         parser.build()
 
         # We parse the content of the file
-        parser.parse(lexer=lexer.export())
+        parser.parse(lexer.lexer)
 
     # If there is neither '-lex' or '-parse' argument value
     if not args.lex and not args.parse:
