@@ -22,13 +22,16 @@ class Program(Node):
     def __str__(self):
         output = '['
 
-        for c in self.classes:
-            output += str(c) + ', '
+        for i, c in enumerate(self.classes):
+            if i == 0:
+                output += str(c)
+            else:
+                output += ', ' + str(c)
 
         return output + ']'
 
     def add_class(self, c):
-        self.classes.append(c)
+        self.classes = [c] + self.classes
 
 
 class Class(Node):
@@ -41,13 +44,19 @@ class Class(Node):
     def __str__(self):
         output = 'Class(' + self.name + ', ' + self.parent + ', ['
 
-        for f in self.fields:
-            output += str(f) + ', '
+        for i, f in enumerate(self.fields):
+            if i == 0:
+                output += str(f)
+            else:
+                output += ', ' + str(f)
 
         output += '], ['
 
-        for m in self.methods:
-            output += str(m) + ', '
+        for i, m in enumerate(self.methods):
+            if i == 0:
+                output += str(m)
+            else:
+                output += ', ' + str(m)
 
         return output + '])'
 
@@ -55,7 +64,7 @@ class Class(Node):
         self.fields.append(f)
 
     def add_method(self, m):
-        self.fields.append(m)
+        self.methods.append(m)
 
 
 class Field(Node):
@@ -83,12 +92,15 @@ class Method(Node):
     def __str__(self):
         output = 'Method(' + self.name + ', ['
 
-        for f in formals:
-            output += str(f) + ','
+        for i, f in enumerate(self.formals):
+            if i == 0:
+                output += str(f)
+            else:
+                output += ', ' + str(f)
 
         return output + '], ' + self.ret_type + ', ' + str(self.block) + ')'
 
-    def add_formal(f):
+    def add_formal(self, f):
         self.formals.append(f)
 
 
@@ -107,12 +119,15 @@ class Block(Node):
 
     def __str__(self):
         if len(self.expr_list) == 1:
-            return str(expr_list[0])
+            return str(self.expr_list[0])
         else:
             output = '['
 
-            for e in expr_list:
-                output += str(e) + ', '
+            for i, e in enumerate(self.expr_list):
+                if i == 0:
+                    output += str(e)
+                else:
+                    output += ', ' + str(e)
 
             return output + ']'
 
@@ -158,10 +173,10 @@ class Let(Expr):
     def __str__(self):
         output = 'Let(' + self.name + ', ' + self.type
 
-        if init_expr is not None:
-            output += ', ' + str(init_expr)
+        if self.init_expr is not None:
+            output += ', ' + str(self.init_expr)
 
-        return output + ', ' + str(scope_expr) + ')'
+        return output + ', ' + str(self.scope_expr) + ')'
 
 
 class Assign(Expr):
@@ -188,7 +203,7 @@ class BinOp(Expr):
         self.left_expr = left_expr
         self.right_expr = right_expr
 
-    def __str__():
+    def __str__(self):
         return 'BinOp(' + self.op + ', ' + str(self.left_expr) + ', ' + str(self.right_expr) + ')'
 
 
@@ -199,10 +214,13 @@ class Call(Expr):
         self.expr_list = []
 
     def __str__(self):
-        output = 'Call(' + self.obj_expr + ', ' + self.method_name + '['
+        output = 'Call(' + str(self.obj_expr) + ', ' + self.method_name + ', ['
 
-        for e in expr_list:
-            output += str(e) + ', '
+        for i, e in enumerate(self.expr_list):
+            if i == 0:
+                output += str(e)
+            else:
+                output += ', ' + str(e)
 
         return output + '])'
 
@@ -212,7 +230,7 @@ class Call(Expr):
 
 class New(Expr):
     def __init__(self, type_name):
-        self.type_name
+        self.type_name = type_name
 
     def __str__(self):
         return 'New(' + self.type_name + ')'

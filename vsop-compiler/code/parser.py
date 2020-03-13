@@ -12,9 +12,10 @@ Authors :
 # Libraries #
 #############
 
-from ast import *
 import utils
 import ply.yacc as yacc
+
+from tree import *
 
 
 ###########
@@ -29,6 +30,13 @@ class Parser:
     def __init__(self, filename, tokens):
         self.filename = filename
         self.tokens = tokens
+
+        self.tokens.remove('IDENTIFIER')
+        self.tokens.remove('INLINE_COMMENT')
+        self.tokens.remove('LEFT_COMMENT')
+        self.tokens.remove('NON_TERMINATED_STRING_LITERAL')
+        self.tokens.remove('OPERATOR')
+        self.tokens.remove('RIGHT_COMMENT')
 
         # We get the file content
         with open(filename, 'r', encoding='ascii') as f:
@@ -71,22 +79,24 @@ class Parser:
               | CLASS TYPE_IDENTIFIER EXTENDS TYPE_IDENTIFIER class_body
         '''
 
-        if p[3] == 'extends':
+        if len(p) > 4:
             p[0] = Class(p[2], p[4])
             class_body = p[5]
         else:
             p[0] = Class(p[2])
             class_body = p[3]
 
-        if type(class_body).__name__ == 'Field':
-            p[0].add_field(class_body)
-        else:
-            p[0].add_method(class_body)
+        if class_body is not None:
+            for e in class_body:
+                if type(e).__name__ == 'Field':
+                    p[0].add_field(e)
+                else:
+                    p[0].add_method(e)
 
     def p_class_body(self, p):
         '''
         class_body : LBRACE class_body_aux RBRACE
-                   | empty
+                   | LBRACE empty RBRACE
         '''
 
         p[0] = p[2]
@@ -99,7 +109,10 @@ class Parser:
                        | method
         '''
 
-        p[0] = p[1]
+        if len(p) > 2:
+            p[0] = [p[1]] + p[2]
+        else:
+            p[0] = [p[1]]
 
     def p_field(self, p):
         '''
@@ -107,10 +120,10 @@ class Parser:
               | OBJECT_IDENTIFIER COLON type ASSIGN expr SEMICOLON
         '''
 
-        if p[4] == ';':
-            p[0] = Field(p[1], p[3], None)
-        else:
+        if len(p) > 5:
             p[0] = Field(p[1], p[3], p[5])
+        else:
+            p[0] = Field(p[1], p[3], None)
 
     def p_method(self, p):
         '''
@@ -119,8 +132,9 @@ class Parser:
 
         p[0] = Method(p[1], p[6], p[7])
 
-        for f in p[3]:
-            p[0].add_formal(f)
+        if p[3][0] is not None:
+            for f in p[3]:
+                p[0].add_formal(f)
 
     def p_type(self, p):
         '''
@@ -135,11 +149,15 @@ class Parser:
 
     def p_formals(self, p):
         '''
-        formals : formal
+        formals : empty
+                | formal
                 | formal COMMA formals
         '''
 
-        p[0] = p[1]
+        if len(p) > 2:
+            p[0] = [p[1]] + p[3]
+        else:
+            p[0] = [p[1]]
 
     def p_formal(self, p):
         '''
@@ -157,13 +175,22 @@ class Parser:
 
         p[0].add_expr(p[2])
 
+        if p[3] is not None:
+            for e in p[3]:
+                if e is not None:
+                    p[0].add_expr(e)
+
     def p_block_aux(self, p):
         '''
         block_aux : SEMICOLON expr block_aux
                   | empty
         '''
 
-        p[0] = p[2]
+        if len(p) > 2:
+            if p[3] is not None:
+                p[0] = [p[2]] + p[3]
+            else:
+                p[0] = [p[2]]
 
     def p_expr_if(self, p):
         '''
@@ -171,10 +198,10 @@ class Parser:
              | IF expr THEN expr ELSE expr
         '''
 
-        if p[5] == 'else':
+        if len(p) > 5:
             p[0] = If(p[2], p[4], p[6])
         else:
-            p[0] = If(p[2], p[4])
+            p[0] = If(p[2], p[4], None)
 
     def p_expr_while(self, p):
         '''
@@ -189,7 +216,7 @@ class Parser:
              | LET OBJECT_IDENTIFIER COLON type ASSIGN expr IN expr
         '''
 
-        if p[5] == '<-':
+        if len(p) > 7:
             p[0] = Let(p[2], p[4], p[6], p[8])
         else:
             p[0] = Let(p[2], p[4], None, p[6])
@@ -231,10 +258,16 @@ class Parser:
              | expr DOT OBJECT_IDENTIFIER LPAR args RPAR
         '''
 
-        if p[2] == '.':
+        if len(p) > 5:
             p[0] = Call(p[1], p[3])
+            args = p[5]
         else:
             p[0] = Call('self', p[1])
+            args = p[3]
+
+        if args[0] is not None:
+            for e in args:
+                p[0].add_expr(e)
 
     def p_expr_new(self, p):
         '''
@@ -280,11 +313,15 @@ class Parser:
 
     def p_args(self, p):
         '''
-        args : expr COMMA args
+        args : empty 
              | expr
+             | expr COMMA args
         '''
 
-        p[0] = p[1]
+        if len(p) > 2:
+            p[0] = [p[1]] + p[3]
+        else:
+            p[0] = [p[1]]
 
     def p_literal(self, p):
         '''
@@ -304,7 +341,7 @@ class Parser:
         p[0] = p[1]
 
     def p_error(self, p):
-        utils.print_error('Syntax error')
+        utils.print_error('{}:1:1: syntax error'.format(self.filename))
 
     def p_empty(self, p):
         '''
@@ -318,7 +355,7 @@ class Parser:
     ############################
 
     def build(self, **kwargs):
-        self.parser = yacc.yacc(module=self, **kwargs)
+        self.parser = yacc.yacc(module=self, debug=True, tabmodule='vsopparsetab', **kwargs)
 
     def parse(self, lexer):
         self.ast = Program()
