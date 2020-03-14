@@ -50,15 +50,15 @@ class Parser:
     ####################
 
     precedence = (
-        ('left', 'DOT'),
-        ('right', 'POW'),
-        ('right', 'ISNULL'), #UMINUS to add !
-        ('left', 'TIMES', 'DIV'),
-        ('left', 'PLUS', 'MINUS'),
-        ('nonassoc', 'LOWER', 'LOWER_EQUAL', 'EQUAL'),
-        ('right', 'NOT'),
-        ('left', 'AND'),
         ('right', 'ASSIGN'),
+        ('left', 'AND'),
+        ('right', 'NOT'),
+        ('nonassoc', 'LOWER', 'LOWER_EQUAL', 'EQUAL'),
+        ('left', 'PLUS', 'MINUS'),
+        ('left', 'TIMES', 'DIV'),
+        ('right', 'ISNULL'), #UMINUS to add !
+        ('right', 'POW'),
+        ('left', 'DOT'),
     )
 
     #################
@@ -355,7 +355,7 @@ class Parser:
     ############################
 
     def build(self, **kwargs):
-        self.parser = yacc.yacc(module=self, debug=True, tabmodule='vsopparsetab', **kwargs)
+        self.parser = yacc.yacc(module=self, debug=False, tabmodule='vsopparsetab', **kwargs)
 
     def parse(self, lexer):
         self.ast = Program()

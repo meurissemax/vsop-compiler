@@ -18,7 +18,7 @@ import utils
 import argparse
 
 from lexer import Lexer
-from parser import Parser
+from myParser import Parser
 
 
 #####################
