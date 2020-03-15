@@ -99,14 +99,18 @@ class Parser:
               | CLASS TYPE_IDENTIFIER EXTENDS TYPE_IDENTIFIER class_body
         """
 
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
         # If we are in the 'extends' case
         if len(p) > 4:
-            p[0] = Class(p[2], p[4])
+            p[0] = Class(lineno, column, p[2], p[4])
             class_body = p[5]
 
         # If we are not in the 'extends' case
         else:
-            p[0] = Class(p[2], 'Object')
+            p[0] = Class(lineno, column, p[2], 'Object')
             class_body = p[3]
 
         # If there is a class body
@@ -158,20 +162,29 @@ class Parser:
               | OBJECT_IDENTIFIER COLON type ASSIGN expr SEMICOLON
         """
 
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
         # If we are in the 'assign' case
         if len(p) > 5:
-            p[0] = Field(p[1], p[3], p[5])
+            p[0] = Field(lineno, column, p[1], p[3], p[5])
 
         # If we are not in the 'assign' case
         else:
-            p[0] = Field(p[1], p[3], None)
+            p[0] = Field(lineno, column, p[1], p[3], None)
 
     def p_method(self, p):
         """
         method : OBJECT_IDENTIFIER LPAR formals RPAR COLON type block
         """
 
-        p[0] = Method(p[1], p[6], p[7])
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
+        # Create the method
+        p[0] = Method(lineno, column, p[1], p[6], p[7])
 
         # We check if 'formals' is not empy
         if p[3][0] is not None:
@@ -213,7 +226,12 @@ class Parser:
         formal : OBJECT_IDENTIFIER COLON type
         """
 
-        p[0] = Formal(p[1], p[3])
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
+        # Create the formal
+        p[0] = Formal(lineno, column, p[1], p[3])
 
     def p_block(self, p):
         """
@@ -260,20 +278,29 @@ class Parser:
              | IF expr THEN expr ELSE expr
         """
 
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
         # If we are in the 'else' case
         if len(p) > 5:
-            p[0] = If(p[2], p[4], p[6])
+            p[0] = If(lineno, column, p[2], p[4], p[6])
 
         # If we are not in the 'else' case
         else:
-            p[0] = If(p[2], p[4], None)
+            p[0] = If(lineno, column, p[2], p[4], None)
 
     def p_expr_while(self, p):
         """
         expr : WHILE expr DO expr
         """
 
-        p[0] = While(p[2], p[4])
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
+        # Create the while
+        p[0] = While(lineno, column, p[2], p[4])
 
     def p_expr_let(self, p):
         """
@@ -281,20 +308,29 @@ class Parser:
              | LET OBJECT_IDENTIFIER COLON type ASSIGN expr IN expr
         """
 
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
         # If we are in the 'assign' case
         if len(p) > 7:
-            p[0] = Let(p[2], p[4], p[6], p[8])
+            p[0] = Let(lineno, column, p[2], p[4], p[6], p[8])
 
         # If we are not in the assign case
         else:
-            p[0] = Let(p[2], p[4], None, p[6])
+            p[0] = Let(lineno, column, p[2], p[4], None, p[6])
 
     def p_expr_assign(self, p):
         """
         expr : OBJECT_IDENTIFIER ASSIGN expr
         """
 
-        p[0] = Assign(p[1], p[3])
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
+        # Create the assign
+        p[0] = Assign(lineno, column, p[1], p[3])
 
     def p_expr_unop(self, p):
         """
@@ -303,7 +339,12 @@ class Parser:
              | ISNULL expr
         """
 
-        p[0] = UnOp(p[1], p[2])
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
+        # Create the unop
+        p[0] = UnOp(lineno, column, p[1], p[2])
 
     def p_expr_binop(self, p):
         """
@@ -318,7 +359,12 @@ class Parser:
              | expr POW expr
         """
 
-        p[0] = BinOp(p[2], p[1], p[3])
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
+        # Create the binop
+        p[0] = BinOp(lineno, column, p[2], p[1], p[3])
 
     def p_expr_call(self, p):
         """
@@ -326,14 +372,18 @@ class Parser:
              | expr DOT OBJECT_IDENTIFIER LPAR args RPAR
         """
 
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
         # If we are not in the 'self' case
         if len(p) > 5:
-            p[0] = Call(p[1], p[3])
+            p[0] = Call(lineno, column, p[1], p[3])
             args = p[5]
 
         # If we are in the 'self' case
         else:
-            p[0] = Call('self', p[1])
+            p[0] = Call(lineno, column, 'self', p[1])
             args = p[3]
 
         # We check if there is 'args'
@@ -348,7 +398,12 @@ class Parser:
         expr : NEW TYPE_IDENTIFIER
         """
 
-        p[0] = New(p[2])
+        # Get position of the element
+        lineno = p.lineno(0)
+        column = self.__find_column(p.lexpos(0))
+
+        # Create the new
+        p[0] = New(lineno, column, p[2])
 
     def p_expr_obj_id(self, p):
         """
