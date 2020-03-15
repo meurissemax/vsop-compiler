@@ -10,10 +10,12 @@
 clean-workspace:
 	rm -f -r __pycache__/
 	rm -f -r build/
+	rm -f parser.out
+	rm -f vsop_parsetab.py
 
 # Remove the executable
 clean-exec:
-	rm -f -r vsopc
+	rm -f vsopc
 
 # Install any software needed to build the compiler
 # (we suppose that python3 is already installed)

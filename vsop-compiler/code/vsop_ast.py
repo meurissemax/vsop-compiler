@@ -8,12 +8,20 @@ Authors :
     - Valentin Vermeylen
 """
 
+
 ###########
 # Classes #
 ###########
 
 class Node:
+    # Parent class of all AST elements. Since Python does not
+    # support abstract classes natively, this class is not
+    # really useful.
+
+    # For the sake of code clarity, we decided to keep it.
+
     pass
+
 
 class Program(Node):
     def __init__(self):
@@ -26,7 +34,7 @@ class Program(Node):
             if i == 0:
                 output += str(c)
             else:
-                output += ', ' + str(c)
+                output += ', \n' + str(c)
 
         return output + ']'
 
@@ -46,17 +54,17 @@ class Class(Node):
 
         for i, f in enumerate(self.fields):
             if i == 0:
-                output += str(f)
+                output += '\n\t' + str(f)
             else:
-                output += ', ' + str(f)
+                output += ', \n\t' + str(f)
 
         output += '], ['
 
         for i, m in enumerate(self.methods):
             if i == 0:
-                output += str(m)
+                output += '\n\t' + str(m)
             else:
-                output += ', ' + str(m)
+                output += ', \n\t' + str(m)
 
         return output + '])'
 
@@ -136,6 +144,12 @@ class Block(Node):
 
 
 class Expr(Node):
+    # Parent class of all expression elements. Since Python
+    # does not support abstract classes natively, this class
+    # is not really useful.
+
+    # For the sake of code clarity, we decided to keep it.
+
     pass
 
 
