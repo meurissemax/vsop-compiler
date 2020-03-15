@@ -13,6 +13,15 @@
 **/__pycache__/
 *.pyc
 
-# Build project
+
+#################
+# VSOP compiler #
+#################
+
+# Executable
 vsop-compiler/code/build/
 vsop-compiler/code/vsopc
+
+# Parser
+vsop-compiler/code/parser.out
+vsop-compiler/code/vsop_parsetab.py

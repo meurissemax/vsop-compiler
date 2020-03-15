@@ -1,5 +1,0 @@
-class C {
-
-	addOne(i : int32) : int32 { i + self.one() }
-
-}

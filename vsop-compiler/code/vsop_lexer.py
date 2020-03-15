@@ -32,7 +32,7 @@ class Lexer:
     # Constructor #
     ###############
 
-    def __init__(self, filename):
+    def __init__(self, filename, debug):
         # We save the filename (to print error)
         self.__filename = filename
 
@@ -42,6 +42,9 @@ class Lexer:
 
         # We save the file content (to retrieve column of tokens)
         self.__data = data
+
+        # We save the argument values
+        self.__debug = debug
 
         # We define base tokens
         self.__base = (
@@ -444,11 +447,8 @@ class Lexer:
     # Build and use the lexer #
     ###########################
 
-    def build(self, **kwargs):
-        self.lexer = lex.lex(module=self, **kwargs)
-
-    def get_tokens(self):
-        return self.tokens
+    def build(self):
+        self.lexer = lex.lex(module=self, debug=self.__debug)
 
     def lex(self):
         # We give the data as input to the lexer
