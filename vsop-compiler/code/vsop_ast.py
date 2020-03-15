@@ -43,7 +43,10 @@ class Program(Node):
 
 
 class Class(Node):
-    def __init__(self, name, parent='Object'):
+    def __init__(self, lineno, column, name, parent='Object'):
+        self.lineno = lineno
+        self.column = column
+
         self.name = name
         self.parent = parent
         self.fields = []
@@ -76,7 +79,10 @@ class Class(Node):
 
 
 class Field(Node):
-    def __init__(self, name, _type, init_expr):
+    def __init__(self, lineno, column, name, _type, init_expr):
+        self.lineno = lineno
+        self.column = column
+
         self.name = name
         self.type = _type
         self.init_expr = init_expr
@@ -91,7 +97,10 @@ class Field(Node):
 
 
 class Method(Node):
-    def __init__(self, name, ret_type, block):
+    def __init__(self, lineno, column, name, ret_type, block):
+        self.lineno = lineno
+        self.column = column
+
         self.name = name
         self.formals = []
         self.ret_type = ret_type
@@ -113,7 +122,10 @@ class Method(Node):
 
 
 class Formal(Node):
-    def __init__(self, name, _type):
+    def __init__(self, lineno, column, name, _type):
+        self.lineno = lineno
+        self.column = column
+
         self.name = name
         self.type = _type
 
@@ -154,7 +166,10 @@ class Expr(Node):
 
 
 class If(Expr):
-    def __init__(self, cond_expr, then_expr, else_expr):
+    def __init__(self, lineno, column, cond_expr, then_expr, else_expr):
+        self.lineno = lineno
+        self.column = column
+
         self.cond_expr = cond_expr
         self.then_expr = then_expr
         self.else_expr = else_expr
@@ -169,7 +184,10 @@ class If(Expr):
 
 
 class While(Expr):
-    def __init__(self, cond_expr, body_expr):
+    def __init__(self, lineno, column, cond_expr, body_expr):
+        self.lineno = lineno
+        self.column = column
+
         self.cond_expr = cond_expr
         self.body_expr = body_expr
 
@@ -178,7 +196,10 @@ class While(Expr):
 
 
 class Let(Expr):
-    def __init__(self, name, _type, init_expr, scope_expr):
+    def __init__(self, lineno, column, name, _type, init_expr, scope_expr):
+        self.lineno = lineno
+        self.column = column
+
         self.name = name
         self.type = _type
         self.init_expr = init_expr
@@ -194,7 +215,10 @@ class Let(Expr):
 
 
 class Assign(Expr):
-    def __init__(self, name, expr):
+    def __init__(self, lineno, column, name, expr):
+        self.lineno = lineno
+        self.column = column
+
         self.name = name
         self.expr = expr
 
@@ -203,7 +227,10 @@ class Assign(Expr):
 
 
 class UnOp(Expr):
-    def __init__(self, op, expr):
+    def __init__(self, lineno, column, op, expr):
+        self.lineno = lineno
+        self.column = column
+
         self.op = op
         self.expr = expr
 
@@ -212,7 +239,10 @@ class UnOp(Expr):
 
 
 class BinOp(Expr):
-    def __init__(self, op, left_expr, right_expr):
+    def __init__(self, lineno, column, op, left_expr, right_expr):
+        self.lineno = lineno
+        self.column = column
+
         self.op = op
         self.left_expr = left_expr
         self.right_expr = right_expr
@@ -222,7 +252,10 @@ class BinOp(Expr):
 
 
 class Call(Expr):
-    def __init__(self, obj_expr, method_name):
+    def __init__(self, lineno, column, obj_expr, method_name):
+        self.lineno = lineno
+        self.column = column
+
         self.obj_expr = obj_expr
         self.method_name = method_name
         self.expr_list = []
@@ -243,7 +276,10 @@ class Call(Expr):
 
 
 class New(Expr):
-    def __init__(self, type_name):
+    def __init__(self, lineno, column, type_name):
+        self.lineno = lineno
+        self.column = column
+
         self.type_name = type_name
 
     def __str__(self):
