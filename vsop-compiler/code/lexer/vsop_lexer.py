@@ -19,7 +19,7 @@ Authors :
 #############
 
 import re
-import utils
+import sys
 import ply.lex as lex
 
 
@@ -32,7 +32,7 @@ class Lexer:
     # Constructor #
     ###############
 
-    def __init__(self, filename, debug):
+    def __init__(self, filename):
         # We save the filename (to print error)
         self.__filename = filename
 
@@ -42,9 +42,6 @@ class Lexer:
 
         # We save the file content (to retrieve column of tokens)
         self.__data = data
-
-        # We save the argument values
-        self.__debug = debug
 
         # We define base tokens
         self.__base = (
@@ -123,6 +120,9 @@ class Lexer:
 
         # List (used as a stack) to handle multiple-line comments
         self.__m_comments = list()
+
+        # Build the lexer
+        self.lexer = lex.lex(module=self)
 
     #######################
     # Comments management #
@@ -322,7 +322,8 @@ class Lexer:
         and exits the lexer.
         """
 
-        utils.print_error('{}:{}:{}: lexical error: {}'.format(self.__filename, lineno, column, message))
+        print('{}:{}:{}: lexical error: {}'.format(self.__filename, lineno, column, message), file=sys.stderr)
+        sys.exit(1)
 
     def t_ANY_error(self, t):
         # If we are in a comment, we don't print errors
@@ -443,14 +444,11 @@ class Lexer:
 
         return t
 
-    ###########################
-    # Build and use the lexer #
-    ###########################
+    #################
+    # Use the lexer #
+    #################
 
-    def build(self):
-        self.lexer = lex.lex(module=self, debug=self.__debug)
-
-    def lex(self):
+    def dump_tokens(self):
         # We give the data as input to the lexer
         self.lexer.input(self.__data)
 

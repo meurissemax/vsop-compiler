@@ -15,10 +15,10 @@ Authors :
 # Libraries #
 #############
 
-import utils
+import sys
 import ply.yacc as yacc
 
-from vsop_ast import *
+from parser.vsop_ast import *
 
 
 ###########
@@ -30,7 +30,7 @@ class Parser:
     # Constructor #
     ###############
 
-    def __init__(self, filename, debug, lexer, tokens, tabmodule):
+    def __init__(self, filename, vsop_lexer):
         # We save the filename (to print error)
         self.__filename = filename
 
@@ -42,10 +42,9 @@ class Parser:
         self.__data = data
 
         # We save the argument values
-        self.__debug = debug
-        self.__lexer = lexer
+        self.__lexer = vsop_lexer.lexer
 
-        self.tokens = tokens
+        self.tokens = vsop_lexer.tokens
 
         # We remove some tokens from the token list
         # (it is not really useful but if we don't do
@@ -59,7 +58,8 @@ class Parser:
         self.tokens.remove('OPERATOR')
         self.tokens.remove('RIGHT_COMMENT')
 
-        self.__tabmodule = tabmodule
+        # Build the parser
+        self.parser = yacc.yacc(module=self, tabmodule='vsop_parsetab', debug=False)
 
     ####################
     # Precedence rules #
@@ -491,7 +491,8 @@ class Parser:
         and exits the parser.
         """
 
-        utils.print_error('{}:{}:{}: syntax error: {}'.format(self.__filename, lineno, column, message))
+        print('{}:{}:{}: syntax error: {}'.format(self.__filename, lineno, column, message), file=sys.stderr)
+        sys.exit(1)
 
     def p_error(self, p):
         # We get line and column information
@@ -522,12 +523,9 @@ class Parser:
 
         return (lexpos - line_start) + 1
 
-    ############################
-    # Build and use the parser #
-    ############################
-
-    def build(self):
-        self.parser = yacc.yacc(module=self, debug=self.__debug, tabmodule=self.__tabmodule)
+    ##################
+    # Use the parser #
+    ##################
 
     def parse(self):
         # We instantiate the abstract syntax tree
@@ -536,9 +534,5 @@ class Parser:
         # We parse the content of the file
         self.parser.parse(input=self.__data, lexer=self.__lexer)
 
-    def print_ast(self):
-        """
-        Print the abstract syntax tree in stdout.
-        """
-
-        print(self.__ast)
+        # We return the AST
+        return self.__ast

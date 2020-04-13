@@ -19,9 +19,9 @@
 #################
 
 # Executable
-vsop-compiler/code/build/
-vsop-compiler/code/vsopc
+**/build/
+vsopc
 
 # Parser
-vsop-compiler/code/parser.out
-vsop-compiler/code/vsop_parsetab.py
+parser.out
+vsop_parsetab.py

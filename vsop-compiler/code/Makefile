@@ -6,16 +6,16 @@
 #    - Maxime Meurisse
 #    - Valentin Vermeylen
 
-# Clean the workspace
-clean-workspace:
-	rm -f -r __pycache__/
-	rm -f -r build/
-	rm -f parser.out
-	rm -f vsop_parsetab.py
-
-# Remove the executable
-clean-exec:
-	rm -f vsopc
+# Build the compiler
+vsopc: *.py
+	pyinstaller \
+		--onefile main.py \
+		--distpath ./ \
+		--clean \
+		--onefile \
+		--name vsopc \
+		--specpath ./build \
+		--workpath ./build \
 
 # Install any software needed to build the compiler
 # (we suppose that python3 is already installed)
@@ -26,13 +26,23 @@ install-tools:
 	yes | sudo pip3 install ply
 	yes | sudo pip3 install pyinstaller
 
-# Build the compiler
-vsopc:
-	pyinstaller \
-		--onefile main.py \
-		--distpath ./ \
-		--clean \
-		--onefile \
-		--name vsopc \
-		--specpath ./build \
-		--workpath ./build \
+# Phony
+.PHONY: clean-workspace clean-exec clean
+
+# Clean the workspace
+clean-workspace:
+	@rm -f -r __pycache__/
+	@rm -f -r **/__pycache__/
+	@rm -f -r build/
+	@rm -f *.pyc
+	@rm -f **/parser.out
+	@rm -f **/vsop_parsetab.py
+
+# Clean the executable
+clean-exec:
+	@rm -f vsopc
+
+# Clean everything
+clean:
+	@make clean-workspace
+	@make clean-exec
