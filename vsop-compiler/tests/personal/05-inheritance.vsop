@@ -1,0 +1,6 @@
+class One { }
+class Two extends Three { }
+class Three extends One { }
+class Four extends One { }
+
+class Main { }

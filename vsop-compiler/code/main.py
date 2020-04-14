@@ -89,7 +89,7 @@ if __name__ == '__main__':
             sys.exit(0)
 
         # If we get there, we annotate the AST
-        vsop_semantic = Semantic(ast)
+        vsop_semantic = Semantic(source, ast)
         a_ast = vsop_semantic.annotate()
 
         # If there is the '-check' arg
@@ -100,4 +100,4 @@ if __name__ == '__main__':
         # TO DO : '-llvm' and '-ext' arguments
 
         # If we get here, we generate a native executable
-        print('TO DO : generate a native executable.')
+        # TO DO : generate a native executable
