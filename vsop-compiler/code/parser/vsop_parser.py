@@ -100,8 +100,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # If we are in the 'extends' case
         if len(p) > 4:
