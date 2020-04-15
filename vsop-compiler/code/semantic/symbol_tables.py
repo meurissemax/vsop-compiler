@@ -34,12 +34,19 @@ class ClassSymbolTable(SymbolTable):
         # For each method, his name is associated with his
         # symbol table.
         self.fields = {}
-        self.method = {}
+        self.methods = {}
+
+class FieldSymbolTable(SymbolTable):
+    def __init__(self, lineno, column, _type):
+        super().__init__(lineno, column)
+
+        # Save type of the field
+        self.type = _type
 
 class MethodSymbolTable(SymbolTable):
-    def __init__(self, lineno, column, args, return_type):
+    def __init__(self, lineno, column, args, ret_type):
         super().__init__(lineno, column)
 
         # Save argument and return type
         self.args = args
-        self.return_type = return_type
+        self.ret_type = ret_type
