@@ -163,8 +163,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # If we are in the 'assign' case
         if len(p) > 5:
@@ -180,8 +180,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # Create the method
         p[0] = Method(lineno, column, p[1], p[6], p[7])
@@ -227,8 +227,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # Create the formal
         p[0] = Formal(lineno, column, p[1], p[3])
@@ -279,8 +279,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # If we are in the 'else' case
         if len(p) > 5:
@@ -296,8 +296,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # Create the while
         p[0] = While(lineno, column, p[2], p[4])
@@ -309,8 +309,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # If we are in the 'assign' case
         if len(p) > 7:
@@ -326,8 +326,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # Create the assign
         p[0] = Assign(lineno, column, p[1], p[3])
@@ -340,8 +340,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # Create the unop
         p[0] = UnOp(lineno, column, p[1], p[2])
@@ -360,8 +360,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # Create the binop
         p[0] = BinOp(lineno, column, p[2], p[1], p[3])
@@ -373,8 +373,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # If we are not in the 'self' case
         if len(p) > 5:
@@ -399,8 +399,8 @@ class Parser:
         """
 
         # Get position of the element
-        lineno = p.lineno(0)
-        column = self.__find_column(p.lexpos(0))
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
 
         # Create the new
         p[0] = New(lineno, column, p[2])
