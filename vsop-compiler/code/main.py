@@ -97,7 +97,7 @@ if __name__ == '__main__':
             print(a_ast)
             sys.exit(0)
 
-        # TO DO : '-llvm' and '-ext' arguments
+        # TODO : '-llvm' and '-ext' arguments
 
         # If we get here, we generate a native executable
-        # TO DO : generate a native executable
+        # TODO : generate a native executable
