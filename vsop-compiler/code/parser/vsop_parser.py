@@ -410,7 +410,12 @@ class Parser:
         expr : OBJECT_IDENTIFIER
         """
 
-        p[0] = p[1]
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
+
+        # Create the object identifier
+        p[0] = ObjectIdentifier(lineno, column, p[1])
 
     def p_expr_literal(self, p):
         """
@@ -424,7 +429,12 @@ class Parser:
         expr : LPAR RPAR
         """
 
-        p[0] = '()'
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
+
+        # Create the object identifier
+        p[0] = Unit(lineno, column)
 
     def p_expr_par(self, p):
         """
@@ -459,12 +469,36 @@ class Parser:
 
     def p_literal(self, p):
         """
-        literal : INTEGER_LITERAL
-                | STRING_LITERAL
+        literal : integer_literal
+                | string_literal
                 | boolean_literal
         """
 
         p[0] = p[1]
+
+    def p_integer_literal(self, p):
+        """
+        integer_literal : INTEGER_LITERAL
+        """
+
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
+
+        # Create the literal
+        p[0] = Literal(lineno, column, p[1], 'integer')
+
+    def p_string_literal(self, p):
+        """
+        string_literal : STRING_LITERAL
+        """
+
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
+
+        # Create the literal
+        p[0] = Literal(lineno, column, p[1], 'string')
 
     def p_boolean_literal(self, p):
         """
@@ -472,7 +506,12 @@ class Parser:
                         | FALSE
         """
 
-        p[0] = p[1]
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
+
+        # Create the literal
+        p[0] = Literal(lineno, column, p[1], 'boolean')
 
     def p_empty(self, p):
         """

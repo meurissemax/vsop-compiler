@@ -156,17 +156,18 @@ class Block(Node):
 
 
 class Expr(Node):
-    # Parent class of all expression elements. Since Python
-    # does not support abstract classes natively, this class
-    # is not really useful.
-
-    # For the sake of code clarity, we decided to keep it.
-
-    pass
+    # Parent class of all expression elements.
+    def __init__(self):
+        self.expr_type = None
+        
+    def set_expr_type(self, expr_type):
+        self.expr_type = expr_type
 
 
 class If(Expr):
     def __init__(self, lineno, column, cond_expr, then_expr, else_expr):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
@@ -180,11 +181,18 @@ class If(Expr):
         if self.else_expr is not None:
             output += ', ' + str(self.else_expr)
 
-        return output + ')'
+        output += ')'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
 
 
 class While(Expr):
     def __init__(self, lineno, column, cond_expr, body_expr):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
@@ -192,11 +200,18 @@ class While(Expr):
         self.body_expr = body_expr
 
     def __str__(self):
-        return 'While(' + str(self.cond_expr) + ', ' + str(self.body_expr) + ')'
+        output = 'While(' + str(self.cond_expr) + ', ' + str(self.body_expr) + ')'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
 
 
 class Let(Expr):
     def __init__(self, lineno, column, name, _type, init_expr, scope_expr):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
@@ -211,11 +226,18 @@ class Let(Expr):
         if self.init_expr is not None:
             output += ', ' + str(self.init_expr)
 
-        return output + ', ' + str(self.scope_expr) + ')'
+        output += ', ' + str(self.scope_expr) + ')'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
 
 
 class Assign(Expr):
     def __init__(self, lineno, column, name, expr):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
@@ -223,11 +245,18 @@ class Assign(Expr):
         self.expr = expr
 
     def __str__(self):
-        return 'Assign(' + self.name + ', ' + str(self.expr) + ')'
+        output = 'Assign(' + self.name + ', ' + str(self.expr) + ')'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
 
 
 class UnOp(Expr):
     def __init__(self, lineno, column, op, expr):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
@@ -235,11 +264,18 @@ class UnOp(Expr):
         self.expr = expr
 
     def __str__(self):
-        return 'UnOp(' + self.op + ', ' + str(self.expr) + ')'
+        output = 'UnOp(' + self.op + ', ' + str(self.expr) + ')'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
 
 
 class BinOp(Expr):
     def __init__(self, lineno, column, op, left_expr, right_expr):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
@@ -248,11 +284,18 @@ class BinOp(Expr):
         self.right_expr = right_expr
 
     def __str__(self):
-        return 'BinOp(' + self.op + ', ' + str(self.left_expr) + ', ' + str(self.right_expr) + ')'
+        output = 'BinOp(' + self.op + ', ' + str(self.left_expr) + ', ' + str(self.right_expr) + ')'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
 
 
 class Call(Expr):
     def __init__(self, lineno, column, obj_expr, method_name):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
@@ -269,7 +312,12 @@ class Call(Expr):
             else:
                 output += ', ' + str(e)
 
-        return output + '])'
+        output += '])'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
 
     def add_expr(self, e):
         self.expr_list.append(e)
@@ -277,10 +325,67 @@ class Call(Expr):
 
 class New(Expr):
     def __init__(self, lineno, column, type_name):
+        super().__init__()
+
         self.lineno = lineno
         self.column = column
 
         self.type_name = type_name
 
     def __str__(self):
-        return 'New(' + self.type_name + ')'
+        output = 'New(' + self.type_name + ')'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
+
+class ObjectIdentifier(Expr):
+    def __init__(self, lineno, column, obj_id):
+        super().__init__()
+
+        self.lineno = lineno
+        self.column = column
+
+        self.id = obj_id
+
+    def __str__(self):
+        output = self.obj_id
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
+
+class Literal(Expr):
+    def __init__(self, lineno, column, literal, _type):
+        super().__init__()
+
+        self.lineno = lineno
+        self.column = column
+
+        self.literal = literal
+        self.type = _type
+
+    def __str__(self):
+        output = self.literal
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
+
+class Unit(Expr):
+    def __init__(self, lineno, column):
+        super().__init__()
+
+        self.lineno = lineno
+        self.column = column
+
+    def __str__(self):
+        output = '()'
+
+        if self.expr_type != None:
+            output += ' : ' + self.expr_type
+
+        return output
