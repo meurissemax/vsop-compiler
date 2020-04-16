@@ -159,7 +159,7 @@ class Expr(Node):
     # Parent class of all expression elements.
     def __init__(self):
         self.expr_type = None
-        
+
     def set_expr_type(self, expr_type):
         self.expr_type = expr_type
 
@@ -183,7 +183,7 @@ class If(Expr):
 
         output += ')'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
@@ -202,7 +202,7 @@ class While(Expr):
     def __str__(self):
         output = 'While(' + str(self.cond_expr) + ', ' + str(self.body_expr) + ')'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
@@ -228,7 +228,7 @@ class Let(Expr):
 
         output += ', ' + str(self.scope_expr) + ')'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
@@ -247,7 +247,7 @@ class Assign(Expr):
     def __str__(self):
         output = 'Assign(' + self.name + ', ' + str(self.expr) + ')'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
@@ -266,7 +266,7 @@ class UnOp(Expr):
     def __str__(self):
         output = 'UnOp(' + self.op + ', ' + str(self.expr) + ')'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
@@ -286,7 +286,7 @@ class BinOp(Expr):
     def __str__(self):
         output = 'BinOp(' + self.op + ', ' + str(self.left_expr) + ', ' + str(self.right_expr) + ')'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
@@ -314,7 +314,7 @@ class Call(Expr):
 
         output += '])'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
@@ -335,10 +335,11 @@ class New(Expr):
     def __str__(self):
         output = 'New(' + self.type_name + ')'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
+
 
 class ObjectIdentifier(Expr):
     def __init__(self, lineno, column, obj_id):
@@ -352,10 +353,11 @@ class ObjectIdentifier(Expr):
     def __str__(self):
         output = self.obj_id
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
+
 
 class Literal(Expr):
     def __init__(self, lineno, column, literal, _type):
@@ -368,12 +370,13 @@ class Literal(Expr):
         self.type = _type
 
     def __str__(self):
-        output = self.literal
+        output = str(self.literal)
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output
+
 
 class Unit(Expr):
     def __init__(self, lineno, column):
@@ -385,7 +388,7 @@ class Unit(Expr):
     def __str__(self):
         output = '()'
 
-        if self.expr_type != None:
+        if self.expr_type is not None:
             output += ' : ' + self.expr_type
 
         return output

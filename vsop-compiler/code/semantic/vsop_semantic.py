@@ -59,15 +59,15 @@ class Semantic:
     ######################
 
     def __add_object(self):
-        object_class = ClassSymbolTable(None, None)
+        object_class = ClassSymbolTable(None, None, 'Object')
 
-        object_class.methods['print'] = MethodSymbolTable(None, None, {'s': 'string'}, 'Object')
-        object_class.methods['printBool'] = MethodSymbolTable(None, None, {'b': 'bool'}, 'Object')
-        object_class.methods['printInt32'] = MethodSymbolTable(None, None, {'i': 'int32'}, 'Object')
+        object_class.methods['print'] = MethodSymbolTable(None, None, 'print', {'s': FieldSymbolTable(None, None, 's', 'string')}, 'Object')
+        object_class.methods['printBool'] = MethodSymbolTable(None, None, 'printBool', {'b': FieldSymbolTable(None, None, 'b', 'bool')}, 'Object')
+        object_class.methods['printInt32'] = MethodSymbolTable(None, None, 'printInt32', {'i': FieldSymbolTable(None, None, 'b', 'int32')}, 'Object')
 
-        object_class.methods['inputLine'] = MethodSymbolTable(None, None, {}, 'string')
-        object_class.methods['inputBool'] = MethodSymbolTable(None, None, {}, 'bool')
-        object_class.methods['inputInt32'] = MethodSymbolTable(None, None, {}, 'int32')
+        object_class.methods['inputLine'] = MethodSymbolTable(None, None, 'inputLine', {}, 'string')
+        object_class.methods['inputBool'] = MethodSymbolTable(None, None, 'inputBool', {}, 'bool')
+        object_class.methods['inputInt32'] = MethodSymbolTable(None, None, 'inputInt32', {}, 'int32')
 
         self.__symbol_table['Object'] = object_class
 
@@ -78,11 +78,11 @@ class Semantic:
                 self.__print_error(c.lineno, c.column, 'can not redefine class "Object"')
             elif c.name in self.__symbol_table:
                 already = self.__symbol_table[c.name]
-                
+
                 self.__print_error(c.lineno, c.column, 'class "{}" already defined at {}:{}'.format(c.name, already.lineno, already.column))
             else:
-                self.__symbol_table[c.name] = ClassSymbolTable(c.lineno, c.column)
-                
+                self.__symbol_table[c.name] = ClassSymbolTable(c.lineno, c.column, c.name)
+
         # Check the parent of each class
         for c in self.__ast.classes:
             if c.parent not in self.__symbol_table:
@@ -111,12 +111,12 @@ class Semantic:
 
     def __get_ancestors(self, class_name):
         ancestors = []
-        
+
         if class_name != 'Object':
             ancestors += [class_name]
             parent = self.__symbol_table[class_name].parent
-            
-            while parent != None:
+
+            while parent is not None:
                 ancestors += [parent[0]]
                 parent = self.__symbol_table[parent[0]].parent
 
@@ -128,11 +128,20 @@ class Semantic:
 
         if class_name_1 in class_2_ancestors:
             return class_name_1
-        elif class_name_2 in class_1_ancestors
+        elif class_name_2 in class_1_ancestors:
             return class_name_2
         else:
             return None
 
+    def __get_current_class(self, stack):
+        # We iterate over each element of the stack
+        for symbol_table in stack:
+
+            # We only look for 'ClassSymbolTable'
+            if symbol_table.__class__.__name__ == 'ClassSymbolTable':
+                return symbol_table.name
+
+        return None
 
     #####################
     # Fields management #
@@ -165,7 +174,7 @@ class Semantic:
                     # We check if the field override a parent field
                     parent = self.__symbol_table[c.name].parent
 
-                    while parent != None:
+                    while parent is not None:
                         parent_name = parent[0]
 
                         if f.name in self.__symbol_table[parent_name].fields:
@@ -176,7 +185,7 @@ class Semantic:
                             parent = self.__symbol_table[parent_name].parent
 
                     # If not, we add the field
-                    self.__symbol_table[c.name].fields[f.name] = FieldSymbolTable(f.lineno, f.column, f.type)
+                    self.__symbol_table[c.name].fields[f.name] = FieldSymbolTable(f.lineno, f.column, f.name, f.type)
 
     def __check_fields_initializer(self):
         # We iterate over each class
@@ -184,7 +193,41 @@ class Semantic:
 
             # For each class, we iterate over its fields
             for f in c.fields:
-                pass
+
+                # We check if the field has an initialize
+                if f.init_expr is not None:
+
+                    # We get the type of the initializing expression (with an empty stack because
+                    # fields and methods of 'self' are not yet in the scope)
+                    init_type = self.__analyze_expr(f.init_expr, [])
+
+                    # If the expected field type is a primitive type
+                    if f.type in self.__primitive_types:
+                        if f.type != init_type:
+                            self.__print_error(f.init_expr.lineno, f.init_expr.column, 'type of the initial expression must be "{}"'.format(f.type))
+
+                    # If the expected field type is a 'class' type
+                    else:
+                        if f.type != init_type:
+                            init_ancestors = self.__get_ancestors(init_type)
+
+                            if f.type not in init_ancestors:
+                                self.__print_error(f.init_expr.lineno, f.init_expr.column, 'type of the initial expression is not conform with static type "{}"'.format(f.type))
+
+                            # We update the type of the field (because we will use the dynamic type of the field to check 'Call')
+                            self.__symbol_table[c.name].fields[f.name].type = init_type
+
+    def __lookup_field(self, stack, field_name):
+        # We iterate over each symbol table on the stack
+        for symbol_table in stack:
+
+            # We search for the field in each symbol table
+            field = symbol_table.lookup_field(field_name)
+
+            if field is not None:
+                return field
+
+        return None
 
     ######################
     # Methods management #
@@ -210,7 +253,7 @@ class Semantic:
 
                     for f in m.formals:
                         f_names = f_names + [f.name]
-                    
+
                     if len(set(f_names)) != len(f_names):
                         self.__print_error(m.lineno, m.column, 'multiple formals can not have the same name')
 
@@ -225,8 +268,8 @@ class Semantic:
                     # We check if the method is defined in a parent. If it is the cas, we check
                     # that the override is valid.
                     parent = self.__symbol_table[c.name].parent
-                    
-                    while parent != None:
+
+                    while parent is not None:
                         parent_name = parent[0]
 
                         # If method overrides a parent's method
@@ -241,7 +284,10 @@ class Semantic:
                             parent_method = self.__symbol_table[parent_name].methods[m.name]
 
                             # If formals'type are different
-                            signature_args_type = list(parent_method.args.values())
+                            signature_args_type = []
+
+                            for value in parent_method.args.values():
+                                signature_args_type += [value.type]
 
                             for i in range(0, len(signature_args_type)):
                                 # If argument type is a primitive type
@@ -260,16 +306,16 @@ class Semantic:
                             # If return types are different
                             if m.ret_type != parent_method.ret_type:
                                 self.__print_error(m.lineno, m.column, 'return type of method "{}" must be the same as the return type of corresponding method in parent class at {}:{}'.format(m.name, parent_method.lineno, parent_method.column))
-                        
+
                         parent = self.__symbol_table[parent_name].parent
 
                     # If no error occurs, we add the method
                     args = {}
 
                     for f in m.formals:
-                        args[f.name] = f.type
+                        args[f.name] = FieldSymbolTable(f.lineno, f.column, f.name, f.type)
 
-                    self.__symbol_table[c.name].methods[m.name] = MethodSymbolTable(m.lineno, m.column, args, m.ret_type)
+                    self.__symbol_table[c.name].methods[m.name] = MethodSymbolTable(m.lineno, m.column, m.name, args, m.ret_type)
 
         # We check that the 'Main' class has a 'main() : int32' method
         if 'main' in self.__symbol_table['Main'].methods:
@@ -303,7 +349,7 @@ class Semantic:
                 if ret_type in self.__primitive_types:
                     if ret_type != block_type:
                         self.__print_error(m.block, m.block, 'return type of the method "{}" is not conform with his signature ("{}" expected but "{}")'.format(m.name, ret_type, block_type))
-                
+
                 # If the expected return type is a 'class' type
                 else:
                     if ret_type != block_type:
@@ -311,6 +357,18 @@ class Semantic:
 
                         if ret_type not in block_type_ancestors:
                             self.__print_error(m.block, m.block, 'return type of the method "{}" is not conform with his signature'.format(m.name))
+
+    def __lookup_method(self, stack, method_name):
+        # We iterate over each symbol table on the stack
+        for symbol_table in stack:
+
+            # We search for the method in each symbol table
+            method = symbol_table.lookup_method(method_name)
+
+            if method is not None:
+                return method
+
+        return method
 
     ##########################
     # Expressions management #
@@ -383,7 +441,7 @@ class Semantic:
                 # We check if both primitive types are equal
                 if then_type != else_type:
                     self.__print_error(expre.else_expr.lineno, expr.else_expr.column, '"else" branch must have the same type of "then" branch')
-            
+
             # Else the type of the two branches are a 'class' type
             else:
                 # If class types are different
@@ -421,7 +479,40 @@ class Semantic:
         return 'unit'
 
     def __analyze_expr_let(self, expr, stack):
-        pass
+        # Create the symbol table of the 'let'
+        let_symbol_table = LetSymbolTable(expr.lineno, expr.column, expr.name, expr.type)
+
+        # If the 'let' has an initializing expression
+        if expr.init_expr is not None:
+            init_type = self.__analyze_expr(expr.init_expr, stack)
+
+            # If the initial type is a primitive type
+            if init_type in self.__primitive_types:
+                if expr.type != init_type:
+                    self.__print_error(expr.init_expr.lineno, expr.init_expr.column, 'type of initial expression must be "{}"'.format(expr.type))
+
+            # If the initial type is a 'class' type
+            else:
+                if expr.type != init_type:
+                    init_ancestors = self.__get_ancestors(init_type)
+
+                    if expr.type not in init_ancestors:
+                        self.__print_error(expr.init_expr.lineno, expr.init_expr.column, 'type of initial expression must be conform with type "{}"'.format(expr.type))
+
+                    # We update the dynamic type of the 'let'
+                    let_symbol_table.field[expr.name].type = init_type
+
+            # We update the node in the AST
+            expr.init_expr.set_expr_type(init_type)
+
+        # Get the expression of the body of the 'let'
+        body_type = self.__analyze_expr(expr.scope_expr, [let_symbol_table] + stack)
+
+        # We update the node in the AST
+        expr.scope_expr.set_expr_type(body_type)
+
+        # We return the type of the 'let'
+        return body_type
 
     def __analyze_expr_assign(self, expr, stack):
         # We get the type of the field which is assigned a value
@@ -554,6 +645,9 @@ class Semantic:
         # We get the type of the 'caller'
         if expr.obj_expr == 'self':
             obj_type = self.__get_current_class(stack)
+
+            if obj_type is None:
+                self.__print_error(expr.obj_expr.lineno, expr.obj_expr.column, '"self" not allowed in this contexte')
         else:
             obj_type = self.__analyze_expr(expr.obj_expr, stack)
 
@@ -580,7 +674,10 @@ class Semantic:
             self.__print_error(expr.lineno, expr.column, 'called method "{}" does not have the right signature'.format(expr.method_name))
 
         if len(method.args) != 0:
-            signature_args_type = list(method.args.values())
+            signature_args_type = []
+
+            for value in method.args.values():
+                signature_args_type += [value.type]
 
             for i in range(0, len(signature_args_type)):
                 # If the type of the argument is a primitive type
@@ -616,7 +713,12 @@ class Semantic:
 
         # If the object identifier is 'self':
         if obj_id == 'self':
-            return self.__get_current_class(stack)
+            current_class = self.__get_current_class(stack)
+
+            if current_class is None:
+                self.__print_error(expr.lineno, expr.column, '"self" not allowed in this contexte')
+
+            return current_class
 
         # If the object identifier is not 'self'
         else:
@@ -690,42 +792,8 @@ class Semantic:
         # Analyze all methods'block
         self.__check_methods_body()
 
-        #########
-        # Debug #
-        #########
-        
-        for key, value in self.__symbol_table.items():
-            # Class
-            print('Class "{}" with parent "{}".'.format(key, value.parent))
+        ###############
+        # Annoted AST #
+        ###############
 
-            # Field(s)
-            for key_f, value_f in value.fields.items():
-                print('\tField "{}" of type "{}"'.format(key_f, value_f.type))
-
-            parent = value.parent
-
-            while parent != None:
-                parent_name = parent[0]
-
-                for k_p, v_p in self.__symbol_table[parent_name].fields.items():
-                    print('\tField "{}" of type "{}" from parent "{}"'.format(k_p, v_p.type, parent_name))
-
-                parent = self.__symbol_table[parent_name].parent
-
-            print('\n')
-
-            # Method(s)
-            for key_m, value_m in value.methods.items():
-                print('\tMethod "{}" with args "{}" and return type "{}"'.format(key_m, value_m.args, value_m.ret_type))
-
-            parent = value.parent
-
-            while parent != None:
-                parent_name = parent[0]
-
-                for k_p, v_p in self.__symbol_table[parent_name].methods.items():
-                    print('\tMethod "{}" with args "{}" and return type "{}" from parent "{}"'.format(k_p, v_p.args, v_p.ret_type, parent_name))
-
-                parent = self.__symbol_table[parent_name].parent
-
-            print('\n')
+        return self.__ast
