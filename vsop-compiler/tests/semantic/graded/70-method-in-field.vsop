@@ -1,0 +1,7 @@
+class Parent {
+    i() : int32 { 2 }
+}
+class Child extends Parent {
+    theAnswer : int32 <- 40 + i();
+}
+class Main { main() : int32 { 0 } }

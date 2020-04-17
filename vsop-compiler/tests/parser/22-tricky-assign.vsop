@@ -1,0 +1,10 @@
+class T {
+    x : int32;
+
+    f() : int32 {
+        let x : int32 in
+        x <- let y : int32 in
+        y <- let x : int32 <- 42 in x * x;
+        x // This is the field (0), neither 42 nor 42^2
+    }
+}

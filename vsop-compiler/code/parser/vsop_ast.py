@@ -133,28 +133,6 @@ class Formal(Node):
         return self.name + ' : ' + self.type
 
 
-class Block(Node):
-    def __init__(self):
-        self.expr_list = []
-
-    def __str__(self):
-        if len(self.expr_list) == 1:
-            return str(self.expr_list[0])
-        else:
-            output = '['
-
-            for i, e in enumerate(self.expr_list):
-                if i == 0:
-                    output += str(e)
-                else:
-                    output += ', ' + str(e)
-
-            return output + ']'
-
-    def add_expr(self, e):
-        self.expr_list.append(e)
-
-
 class Expr(Node):
     # Parent class of all expression elements.
     def __init__(self):
@@ -341,6 +319,22 @@ class New(Expr):
         return output
 
 
+class Self(Expr):
+    def __init__(self, lineno, column):
+        super().__init__()
+
+        self.lineno = lineno
+        self.column = column
+
+    def __str__(self):
+        output = 'self'
+
+        if self.expr_type is not None:
+            output += ' : ' + self.expr_type
+
+        return output
+
+
 class ObjectIdentifier(Expr):
     def __init__(self, lineno, column, obj_id):
         super().__init__()
@@ -351,7 +345,7 @@ class ObjectIdentifier(Expr):
         self.id = obj_id
 
     def __str__(self):
-        output = self.obj_id
+        output = self.id
 
         if self.expr_type is not None:
             output += ' : ' + self.expr_type
@@ -392,3 +386,35 @@ class Unit(Expr):
             output += ' : ' + self.expr_type
 
         return output
+
+
+class Block(Expr):
+    def __init__(self, lineno, column):
+        super().__init__()
+
+        self.lineno = lineno
+        self.column = column
+
+        self.expr_list = []
+
+    def __str__(self):
+        if len(self.expr_list) == 1:
+            return str(self.expr_list[0])
+        else:
+            output = '['
+
+            for i, e in enumerate(self.expr_list):
+                if i == 0:
+                    output += str(e)
+                else:
+                    output += ', ' + str(e)
+
+            output += ']'
+
+            if self.expr_type is not None:
+                output += ' : ' + self.expr_type
+
+            return output
+
+    def add_expr(self, e):
+        self.expr_list.append(e)

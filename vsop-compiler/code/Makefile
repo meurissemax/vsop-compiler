@@ -9,13 +9,14 @@
 # Build the compiler
 vsopc: *.py
 	pyinstaller \
-		--onefile main.py \
-		--distpath ./ \
-		--clean \
 		--onefile \
-		--name vsopc \
+		--distpath ./ \
 		--specpath ./build \
 		--workpath ./build \
+		--clean \
+		--name vsopc \
+		--add-data ../parser/vsop_parsetab.py:parser/ \
+		main.py
 
 # Install any software needed to build the compiler
 # (we suppose that python3 is already installed)
@@ -36,7 +37,6 @@ clean-workspace:
 	@rm -f -r build/
 	@rm -f *.pyc
 	@rm -f **/parser.out
-	@rm -f **/vsop_parsetab.py
 
 # Clean the executable
 clean-exec:

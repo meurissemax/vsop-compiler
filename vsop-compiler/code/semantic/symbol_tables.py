@@ -48,20 +48,20 @@ class ClassSymbolTable(SymbolTable):
         self.methods = {}
 
     def lookup_field(self, field_name):
-        if self.fields[field_name] is not None:
+        if field_name in self.fields:
             return self.fields[field_name]
         else:
             if self.parent is not None:
-                return self.parent.lookup_field(field_name)
+                return self.parent[1].lookup_field(field_name)
 
         return None
 
     def lookup_method(self, method_name):
-        if self.methods[method_name] is not None:
+        if method_name in self.methods:
             return self.methods[method_name]
         else:
             if self.parent is not None:
-                return self.parent.lookup_method(method_name)
+                return self.parent[1].lookup_method(method_name)
 
         return None
 
@@ -83,7 +83,10 @@ class MethodSymbolTable(SymbolTable):
         self.ret_type = ret_type
 
     def lookup_field(self, field_name):
-        return self.args[field_name]
+        if field_name in self.args:
+            return self.args[field_name]
+
+        return None
 
 
 class LetSymbolTable(SymbolTable):
@@ -94,4 +97,7 @@ class LetSymbolTable(SymbolTable):
         self.field = {field_name: FieldSymbolTable(lineno, column, field_name, _type)}
 
     def lookup_field(self, field_name):
-        return self.field[field_name]
+        if field_name in self.field:
+            return self.field[field_name]
+
+        return None

@@ -1,0 +1,11 @@
+class Parent { }
+class Child extends Parent {
+    onlyInChild() : Object { print("In Child\n") }
+}
+class Main {
+    main() : int32 {
+        let parent : Parent <- new Child // Allowed, as Child extends Parent
+        in parent.onlyInChild(); // Forbidden, static type is Parent, not Child
+        0
+    }
+}

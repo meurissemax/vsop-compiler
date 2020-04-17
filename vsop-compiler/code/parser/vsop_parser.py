@@ -59,7 +59,7 @@ class Parser:
         self.tokens.remove('RIGHT_COMMENT')
 
         # Build the parser
-        self.parser = yacc.yacc(module=self, tabmodule='vsop_parsetab', debug=False)
+        self.parser = yacc.yacc(module=self, debug=False, tabmodule='vsop_parsetab')
 
     ####################
     # Precedence rules #
@@ -238,7 +238,12 @@ class Parser:
         block : LBRACE expr block_aux RBRACE
         """
 
-        p[0] = Block()
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.__find_column(p.lexpos(1))
+
+        # Create the block
+        p[0] = Block(lineno, column)
 
         # We add the required expression to the block
         p[0].add_expr(p[2])
@@ -372,18 +377,22 @@ class Parser:
              | expr DOT OBJECT_IDENTIFIER LPAR args RPAR
         """
 
-        # Get position of the element
-        lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
-
         # If we are not in the 'self' case
         if len(p) > 5:
+            # Get position of the element
+            lineno = p.lineno(3)
+            column = self.__find_column(p.lexpos(3))
+
             p[0] = Call(lineno, column, p[1], p[3])
             args = p[5]
 
         # If we are in the 'self' case
         else:
-            p[0] = Call(lineno, column, 'self', p[1])
+            # Get position of the element
+            lineno = p.lineno(1)
+            column = self.__find_column(p.lexpos(1))
+
+            p[0] = Call(lineno, column, Self(lineno, column), p[1])
             args = p[3]
 
         # We check if there is 'args'

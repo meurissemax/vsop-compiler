@@ -1,0 +1,8 @@
+class T {
+    f() : int32 {
+        let x : int32 in {
+            x <- 42;
+            x * x
+        }
+    }
+}
