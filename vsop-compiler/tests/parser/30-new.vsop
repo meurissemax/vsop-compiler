@@ -1,0 +1,13 @@
+class Factory {
+    makeDoubleBigInt(i : int32) : BigInt {
+        (new BigInt).init(i * 2)
+    }
+}
+class BigInt {
+    i : int32;
+
+    init(i_ : int32) : BigInt {
+        i <- i_;
+        self
+    }
+}

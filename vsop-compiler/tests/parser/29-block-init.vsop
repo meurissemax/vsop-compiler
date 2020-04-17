@@ -1,0 +1,3 @@
+class C {
+    i : int32 <- { print("Initializing i"); 42 }; // This is valid
+}

@@ -1,0 +1,4 @@
+class MyClass extends Object {
+    myField : int32 <- { true; 42 };
+}
+class Main { main() : int32 { 0 } }

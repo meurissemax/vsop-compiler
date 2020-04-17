@@ -178,7 +178,7 @@ class Semantic:
                         parent_name = parent[0]
 
                         if f.name in self.__symbol_table[parent_name].fields:
-                            already = self.__symbol_table[parent_name]
+                            already = self.__symbol_table[parent_name].fields[f.name]
 
                             self.__print_error(f.lineno, f.column, 'field "{}" already defined in parent at {}:{} and can not be override'.format(f.name, already.lineno, already.column))
                         else:
@@ -289,6 +289,9 @@ class Semantic:
                             for value in parent_method.args.values():
                                 signature_args_type += [value.type]
 
+                            if len(signature_args_type) != len(args_type):
+                                self.__print_error(m.lineno, m.column, 'formals of method "{}" must have the same type of formals of method "{}" in parent class at {}:{}'.format(m.name, m.name, parent_method.lineno, parent_method.column))
+
                             for i in range(0, len(signature_args_type)):
                                 # If argument type is a primitive type
                                 if signature_args_type[i] in self.__primitive_types:
@@ -383,7 +386,7 @@ class Semantic:
             for i in range(0, len(expr.expr_list) - 1):
                 self.__analyze_expr(expr.expr_list[i], stack)
 
-            return self.__analyze_expr(expr.expr_list[len(expr.expr_list) - 1], stack)
+            expr_type = self.__analyze_expr(expr.expr_list[len(expr.expr_list) - 1], stack)
         elif expr_class == 'If':
             expr_type = self.__analyze_expr_if(expr, stack)
         elif expr_class == 'While':
@@ -400,6 +403,8 @@ class Semantic:
             expr_type = self.__analyze_expr_call(expr, stack)
         elif expr_class == 'New':
             expr_type = self.__analyze_expr_new(expr, stack)
+        elif expr_class == 'Self':
+            expr_type = self.__analyze_expr_self(expr, stack)
         elif expr_class == 'ObjectIdentifier':
             expr_type = self.__analyze_expr_obj_id(expr, stack)
         elif expr_class == 'Literal':
@@ -432,30 +437,27 @@ class Semantic:
             # We get the type of the 'else' branch
             else_type = self.__analyze_expr(expr.else_expr, stack)
 
-            # If (at least) one branch has type unit
-            if then_type == 'unit' or else_type == 'unit':
-                ret_type = 'unit'
+        # Else, by default the type of the branch 'else' is 'unit'
+        else:
+            else_type = 'unit'
 
-            # If (at least) one branch has a primitive type
-            elif then_type in self.__primitive_types or else_type in self.__primitive_types:
-                # We check if both primitive types are equal
-                if then_type != else_type:
-                    self.__print_error(expre.else_expr.lineno, expr.else_expr.column, '"else" branch must have the same type of "then" branch')
+        # If (at least) one branch has type unit
+        if then_type == 'unit' or else_type == 'unit':
+            ret_type = 'unit'
 
-            # Else the type of the two branches are a 'class' type
-            else:
-                # If class types are different
-                if then_type != else_type:
-                    # We get the common ancestor between the two classes (no verification
-                    # needed because every classes have at least a common ancestor : Object)
-                    ret_type = self.__get_common_ancestor(then_type, else_type)
+        # If (at least) one branch has a primitive type
+        elif then_type in self.__primitive_types or else_type in self.__primitive_types:
+            # We check if both primitive types are equal
+            if then_type != else_type:
+                self.__print_error(expr.else_expr.lineno, expr.else_expr.column, '"else" branch must have the same type of "then" branch')
 
-            # We update the node in the AST
-            expr.else_expr.set_expr_type(else_type)
-
-        # We update the nodes in the AST
-        expr.cond_expr.set_expr_type(cond_type)
-        expr.then_expr.set_expr_type(then_type)
+        # Else the type of the two branches are a 'class' type
+        else:
+            # If class types are different
+            if then_type != else_type:
+                # We get the common ancestor between the two classes (no verification
+                # needed because every classes have at least a common ancestor : Object)
+                ret_type = self.__get_common_ancestor(then_type, else_type)
 
         # We return the type of the expression
         return ret_type
@@ -471,14 +473,15 @@ class Semantic:
         # We get the type of the body
         body_type = self.__analyze_expr(expr.body_expr, stack)
 
-        # We update the nodes in the AST
-        expr.cond_expr.set_expr_type(cond_type)
-        expr.body_expr.set_expr_type(body_type)
-
         # We return the type of the expression
         return 'unit'
 
     def __analyze_expr_let(self, expr, stack):
+        # Check the static type of 'let'
+        if expr.type not in self.__primitive_types:
+            if expr.type not in self.__symbol_table:
+                self.__print_error(expr.lineno, expr.column, 'undefined type "{}"'.format(expr.type))
+
         # Create the symbol table of the 'let'
         let_symbol_table = LetSymbolTable(expr.lineno, expr.column, expr.name, expr.type)
 
@@ -499,22 +502,17 @@ class Semantic:
                     if expr.type not in init_ancestors:
                         self.__print_error(expr.init_expr.lineno, expr.init_expr.column, 'type of initial expression must be conform with type "{}"'.format(expr.type))
 
-                    # We update the dynamic type of the 'let'
-                    let_symbol_table.field[expr.name].type = init_type
-
-            # We update the node in the AST
-            expr.init_expr.set_expr_type(init_type)
-
         # Get the expression of the body of the 'let'
         body_type = self.__analyze_expr(expr.scope_expr, [let_symbol_table] + stack)
-
-        # We update the node in the AST
-        expr.scope_expr.set_expr_type(body_type)
 
         # We return the type of the 'let'
         return body_type
 
     def __analyze_expr_assign(self, expr, stack):
+        # We check if field is a 'self'
+        if expr.name == 'self':
+            self.__print_error(expr.lineno, expr.column, 'can not assign a value to "self"')
+
         # We get the type of the field which is assigned a value
         field = self.__lookup_field(stack, expr.name)
 
@@ -541,9 +539,6 @@ class Semantic:
             if field.type != assign_type and field.type not in assign_ancestors:
                 self.__print_error(expr.expr.lineno, expr.expr.column, 'non conform assigned type "{}"'.format(assign_type))
 
-        # We update the node in the AST
-        expr.expr.set_expr_type(assign_type)
-
         # We return the type of the expression
         return assign_type
 
@@ -563,7 +558,7 @@ class Semantic:
                 self.__print_error(expr.expr.lineno, expr.expr.column, 'expression type must be "bool"')
 
         # If unary operator is '-'
-        elif unop == 'minus':
+        elif unop == '-':
             if expr_type != 'int32':
                 self.__print_error(expr.expr.lineno, expr.expr.column, 'expression type must be "int32"')
 
@@ -577,9 +572,6 @@ class Semantic:
         # If unary operator is unknown
         else:
             self.__print_error(expr.lineno, expr.column, 'unknown unary operator')
-
-        # We update the node in the AST
-        expr.expr.set_expr_type(expr_type)
 
         # We return the type of the expression
         return ret_type
@@ -596,13 +588,15 @@ class Semantic:
         ret_type = 'bool'
 
         # If binary operator is '='
-        if binop == 'equal':
+        if binop == '=':
             # If a operand has a primitive type
             if left_type in self.__primitive_types or right_type in self.__primitive_types:
                 if left_type not in self.__primitive_types:
                     self.__print_error(expr.left_expr.lineno, expr.left_expr.column, 'invalid left expression type (non primitive type compared with a primitive type)')
                 elif right_type not in self.__primitive_types:
                     self.__print_error(expr.right_expr.lineno, expr.right_expr.column, 'invalid right expression type (non primitive type compared with a primitive type)')
+                elif left_type != right_type:
+                    self.__print_error(expr.right_expr.lineno, expr.right_expr.column, 'can not compare a value of type "{}" and a value of type "{}"'.format(left_type, right_type))
 
         # If binary operator is a logical operator
         elif binop == 'and':
@@ -613,7 +607,7 @@ class Semantic:
                 self.__print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "bool"')
 
         # If binary operator is a comparison operator
-        elif binop in ['lower', 'lower_equal']:
+        elif binop in ['<', '<=']:
             if left_type != 'int32':
                 self.__print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32"')
 
@@ -621,7 +615,7 @@ class Semantic:
                 self.__print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "int32"')
 
         # If binary operator is an arithmetic operator
-        elif binop in ['plus', 'minus', 'times', 'div', 'pow']:
+        elif binop in ['+', '-', '*', '/', '^']:
             if left_type != 'int32':
                 self.__print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32"')
 
@@ -634,26 +628,20 @@ class Semantic:
         else:
             self.__print_error(expr.lineno, expr.column, 'unknown binary operator')
 
-        # We update the nodes in the AST
-        expr.left_expr.set_expr_type(left_expr)
-        expr.right_expr.set_expr_type(right_expr)
-
         # We return the type of the expression
         return ret_type
 
     def __analyze_expr_call(self, expr, stack):
         # We get the type of the 'caller'
-        if expr.obj_expr == 'self':
-            obj_type = self.__get_current_class(stack)
+        obj_type = self.__analyze_expr(expr.obj_expr, stack)
 
-            if obj_type is None:
-                self.__print_error(expr.obj_expr.lineno, expr.obj_expr.column, '"self" not allowed in this contexte')
-        else:
-            obj_type = self.__analyze_expr(expr.obj_expr, stack)
+        # We check if the type of the 'caller' is 'None'
+        if obj_type is None:
+            self.__print_error(expr.obj_expr.lineno, expr.obj_expr.column, 'can not use "self" in a field initializer')
 
-            # We check if the object type is a primitive type
-            if obj_type in self.__primitive_types:
-                self.__print_error(expr.obj_expr.lineno, expr.obj_expr.column, 'the caller can not have a primitive type')
+        # We check if the object type is a primitive type
+        if obj_type in self.__primitive_types:
+            self.__print_error(expr.obj_expr.lineno, expr.obj_expr.column, 'the caller can not have a primitive type')
 
         # We check if the method is available in the scope of the caller
         method = self.__lookup_method([self.__symbol_table[obj_type]], expr.method_name)
@@ -666,8 +654,6 @@ class Semantic:
 
         for e in expr.expr_list:
             arg_type = self.__analyze_expr(e, stack)
-            e.set_expr_type(arg_type)
-
             args_type += [arg_type]
 
         if len(method.args) != len(args_type):
@@ -693,19 +679,20 @@ class Semantic:
                         if signature_args_type[i] not in arg_ancestors:
                             self.__print_error(expr.expr_list[i].lineno, expr.expr_list[i].column, 'argument number {} does not have a conform type'.format(i + 1))
 
-        # We update the node in the AST
-        expr.obj_expr.set_expr_type(obj_type)
-
         # We return the type of the expression
         return method.ret_type
 
     def __analyze_expr_new(self, expr, stack):
         # We check if the type of the new element exist
-        if self.__symbol_table[expr.type_name] is None:
+        if expr.type_name not in self.__symbol_table:
             self.__print_error(expr.lineno, expr.column, 'unknown type "{}"'.format(expr.type_name))
 
         # We return the type of the expression
         return expr.type_name
+
+    def __analyze_expr_self(self, expr, stack):
+        # We get and return the type of the 'self' element
+        return self.__get_current_class(stack)
 
     def __analyze_expr_obj_id(self, expr, stack):
         # We get the object identifier
