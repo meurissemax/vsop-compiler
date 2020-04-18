@@ -1,0 +1,10 @@
+# vsop_lextab.py. This file automatically created by PLY (version 3.11). Don't edit!
+_tabversion   = '3.10'
+_lextokens    = set(('AND', 'ASSIGN', 'BOOL', 'CLASS', 'COLON', 'COMMA', 'DIV', 'DO', 'DOT', 'ELSE', 'EQUAL', 'EXTENDS', 'FALSE', 'IDENTIFIER', 'IF', 'IN', 'INLINE_COMMENT', 'INT32', 'INTEGER_LITERAL', 'ISNULL', 'LBRACE', 'LEFT_COMMENT', 'LET', 'LOWER', 'LOWER_EQUAL', 'LPAR', 'MINUS', 'NEW', 'NON_TERMINATED_STRING_LITERAL', 'NOT', 'OBJECT_IDENTIFIER', 'OPERATOR', 'PLUS', 'POW', 'RBRACE', 'RIGHT_COMMENT', 'RPAR', 'SEMICOLON', 'STRING', 'STRING_LITERAL', 'THEN', 'TIMES', 'TRUE', 'TYPE_IDENTIFIER', 'UNIT', 'WHILE'))
+_lexreflags   = 64
+_lexliterals  = ''
+_lexstateinfo = {'INITIAL': 'inclusive', 'comment': 'exclusive'}
+_lexstatere   = {'INITIAL': [('(?P<t_ANY_INLINE_COMMENT>\\/\\/)|(?P<t_ANY_LEFT_COMMENT>\\(\\*)|(?P<t_ANY_RIGHT_COMMENT>\\*\\))|(?P<t_IDENTIFIER>[a-z](([a-z]|[A-Z])|[0-9]|_)*)|(?P<t_TYPE_IDENTIFIER>[A-Z](([a-z]|[A-Z])|[0-9]|_)*)|(?P<t_INTEGER_LITERAL>([0-9]|0x)([0-9]|[a-z]|[A-Z])*)|(?P<t_STRING_LITERAL>\\"(?:[^\\"\\\\]|\\\\.|\\\\\\n)*\\")|(?P<t_NON_TERMINATED_STRING_LITERAL>\\"(?:[^\\"\\\\]|\\\\.|\\\\\\n)*)|(?P<t_OPERATOR>{|}|\\(|\\)|:|;|,|\\+|-|\\*|/|\\^|\\.|<=|<-|<|=)|(?P<t_ANY_newline>[\\n]+)', [None, ('t_ANY_INLINE_COMMENT', 'INLINE_COMMENT'), ('t_ANY_LEFT_COMMENT', 'LEFT_COMMENT'), ('t_ANY_RIGHT_COMMENT', 'RIGHT_COMMENT'), ('t_IDENTIFIER', 'IDENTIFIER'), None, None, ('t_TYPE_IDENTIFIER', 'TYPE_IDENTIFIER'), None, None, ('t_INTEGER_LITERAL', 'INTEGER_LITERAL'), None, None, ('t_STRING_LITERAL', 'STRING_LITERAL'), ('t_NON_TERMINATED_STRING_LITERAL', 'NON_TERMINATED_STRING_LITERAL'), ('t_OPERATOR', 'OPERATOR'), ('t_ANY_newline', 'newline')])], 'comment': [('(?P<t_ANY_INLINE_COMMENT>\\/\\/)|(?P<t_ANY_LEFT_COMMENT>\\(\\*)|(?P<t_ANY_RIGHT_COMMENT>\\*\\))|(?P<t_ANY_newline>[\\n]+)', [None, ('t_ANY_INLINE_COMMENT', 'INLINE_COMMENT'), ('t_ANY_LEFT_COMMENT', 'LEFT_COMMENT'), ('t_ANY_RIGHT_COMMENT', 'RIGHT_COMMENT'), ('t_ANY_newline', 'newline')])]}
+_lexstateignore = {'INITIAL': ' \r\x0c\t', 'comment': ' \r\x0c\t'}
+_lexstateerrorf = {'INITIAL': 't_ANY_error', 'comment': 't_ANY_error'}
+_lexstateeoff = {}

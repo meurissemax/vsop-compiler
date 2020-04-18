@@ -8,15 +8,9 @@ Authors :
     - Valentin Vermeylen
 """
 
-# Remark / TO-DO for the future : we have realized that, when we have an error
-# in a multi-line string, we do not report it at the right position because we
-# have flattened the string beforehand. However, changing that would require us
-# to re-engineer the way we treat strings. Thus, we have decided to rather
-# provide an explicit error message and to try to solve that later in the year.
-
-#############
-# Libraries #
-#############
+###########
+# Imports #
+###########
 
 import re
 import sys
@@ -121,8 +115,11 @@ class Lexer:
         # List (used as a stack) to handle multiple-line comments
         self.__m_comments = list()
 
+        # Flag to handle the case of a lexing with error(s)
+        self.__has_error = False
+
         # Build the lexer
-        self.lexer = lex.lex(module=self)
+        self.lexer = lex.lex(module=self, optimize=1, lextab='vsop_lextab')
 
     #######################
     # Comments management #
@@ -278,7 +275,7 @@ class Lexer:
         t = self.__string_processing(t)
 
         # We print the error of the non-terminated string
-        self.__print_error(t.lineno, self.__find_column(t), 'string non terminated before end of file.')
+        self.__print_error(t.lineno, self.__find_column(t), 'string non terminated before end of file')
 
     def t_OPERATOR(self, t):
         r'{|}|\(|\)|:|;|,|\+|-|\*|/|\^|\.|<=|<-|<|='
@@ -322,8 +319,11 @@ class Lexer:
         and exits the lexer.
         """
 
+        # Update the flag
+        self.__has_error = True
+
+        # Print the error
         print('{}:{}:{}: lexical error: {}'.format(self.__filename, lineno, column, message), file=sys.stderr)
-        sys.exit(1)
 
     def t_ANY_error(self, t):
         # If we are in a comment, we don't print errors
@@ -351,6 +351,33 @@ class Lexer:
 
         return (t.lexpos - line_start) + 1
 
+    def __find_pos_string(self, original, sub):
+        """
+        Returns the line and the column of a
+        substring 'sub' of 'original' relatively
+        to the 'original' string.
+        """
+
+        # We find the position of 'sub' in 'original'
+        original_pos = original.find(sub)
+
+        # We keep the part of the 'original' string up to 'sub'.
+        original_sub = original[0:original_pos + len(sub)]
+
+        # We get the line position of 'sub' (by counting
+        # the number of '\n' up to 'sub')
+        lineno = original_sub.count('\n')
+
+        # We split the substring of 'original' and keep
+        # the part where 'sub' is located
+        original_split = original_sub.split('\n')
+        original_split = original_split[lineno]
+
+        # We get the column of 'sub'
+        column = original_split.find(sub)
+
+        return lineno, column
+
     def __string_processing(self, t):
         """
         Processes a string literal according to
@@ -360,18 +387,24 @@ class Lexer:
 
         t.lexer.lineno += t.value.count('\n')
 
+        # We save the original value of the string (for
+        # error reporting)
+        original = t.value
+
         # We remove valid newlines if any (a newline
         # preceded by \) and after that, we check if there
         # is still a line feed (which could be invalid)
         t.value = re.sub(r'(\\\n([\t\b\r ])*|\\\n)', '', t.value)
 
         if '\n' in t.value:
-            self.__print_error(t.lineno, self.__find_column(t) + t.value.find('\n'), f'string {t.value} contains line feed.')
+            self.__print_error(t.lineno, self.__find_column(t) + t.value.find('\n'), 'string contains line feed')
 
         # We check if the treated string contains null character
         if len(t.value.split('\x00')) != 1:
             splits = t.value.split('\x00')
-            self.__print_error(t.lineno, self.__find_column(t) + len(splits[0]), f'string {t.value} contains null character.')
+            lineno, column = self.__find_pos_string(original, '\x00')
+
+            self.__print_error(t.lineno + lineno, column + 1, 'string contains null character')
 
         # We escape special characters (\b, \t, ect)
         # and we check if there are characters that
@@ -412,14 +445,20 @@ class Lexer:
 
                 # Null character (invalid)
                 if hex_value == '00':
-                    self.__print_error(t.lineno, self.__find_column(t) + pos, f'string {t.value} contains null character.')
+                    lineno, column = self.__find_pos_string(original, '\\{}{}'.format(base, hex_value))
+
+                    self.__print_error(t.lineno + lineno, column + 1, 'string contains null character')
+                    continue
 
                 # We get the byte value of the
                 # hexadecimal sequence (if valid)
                 try:
                     byte_value = int('0x{}'.format(hex_value), 0)
                 except ValueError:
-                    self.__print_error(t.lineno, self.__find_column(t) + pos, f'invalid hexadecimal escaped sequence {hex_value} in string {t.value}.')
+                    lineno, column = self.__find_pos_string(original, '\\{}{}'.format(base, hex_value))
+
+                    self.__print_error(t.lineno + lineno, column + 1, 'invalid hexadecimal escaped sequence {}'.format(hex_value))
+                    continue
 
                 # We check if we have to replace
                 # the escaped sequence
@@ -432,7 +471,10 @@ class Lexer:
             # Not hexadecimal escaped sequence
             # (necessarily invalid)
             else:
-                self.__print_error(t.lineno, self.__find_column(t) + pos, f'unknow escaped sequence {base} in string {t.value}.')
+                lineno, column = self.__find_pos_string(original, '\\{}'.format(base))
+
+                self.__print_error(t.lineno + lineno, column + 1, 'unknow escaped sequence {}'.format(base))
+                continue
 
         # We replace hexadecimal sequences
         # that have to be replaced
@@ -457,6 +499,7 @@ class Lexer:
 
         # We tokenize
         while True:
+            # We get the token
             token = self.lexer.token()
 
             # If there is no more token
@@ -470,12 +513,18 @@ class Lexer:
 
                 break
 
-            # We get column and type of the token
-            t_column = self.__find_column(token)
-            t_type = token.type.replace('_', '-')
-
-            # We print the token (in the right format)
-            if token.type in type_value:
-                print('{},{},{},{}'.format(token.lineno, t_column, t_type.lower(), token.value))
+            # Else, we print the token
             else:
-                print('{},{},{}'.format(token.lineno, t_column, t_type.lower()))
+                # We get column and type of the token
+                t_column = self.__find_column(token)
+                t_type = token.type.replace('_', '-')
+
+                # We print the token (in the right format)
+                if token.type in type_value:
+                    print('{},{},{},{}'.format(token.lineno, t_column, t_type.lower(), token.value))
+                else:
+                    print('{},{},{}'.format(token.lineno, t_column, t_type.lower()))
+
+        # If there was error(s), we exit with an error code
+        if self.__has_error:
+            sys.exit(1)
