@@ -8,12 +8,11 @@ Authors :
     - Valentin Vermeylen
 """
 
-# Remark / TO-DO for the future :
-#   - error handling (clean and meaningful error messages)
+# TODO : error handling (clean and meaningful error messages)
 
-#############
-# Libraries #
-#############
+###########
+# Imports #
+###########
 
 import sys
 import ply.yacc as yacc

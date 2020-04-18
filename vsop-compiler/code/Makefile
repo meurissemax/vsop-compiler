@@ -15,6 +15,7 @@ vsopc: *.py
 		--workpath ./build \
 		--clean \
 		--name vsopc \
+		--add-data ../lexer/vsop_lextab.py:lexer/ \
 		--add-data ../parser/vsop_parsetab.py:parser/ \
 		main.py
 
