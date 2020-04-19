@@ -21,6 +21,7 @@ import argparse
 from lexer.vsop_lexer import Lexer
 from parser.vsop_parser import Parser
 from semantic.vsop_semantic import Semantic
+from llvm.vsop_llvm import LLVM
 
 
 ########
@@ -78,7 +79,7 @@ if __name__ == '__main__':
             vsop_lexer.dump_tokens()
             sys.exit(0)
 
-        # If we get here, we parse the VSOP file (remark : lexing
+        # If we get there, we parse the VSOP file (remark : lexing
         # is done implicitly in the parsing)
         vsop_parser = Parser(source, vsop_lexer)
         ast = vsop_parser.parse()
@@ -97,7 +98,14 @@ if __name__ == '__main__':
             print(a_ast)
             sys.exit(0)
 
-        # TODO : '-llvm' and '-ext' arguments
+        # If we get there, we generate the LLVM code
+        vsop_llvm = LLVM(a_ast)
+        llvm_code = vsop_llvm.generate()
 
-        # If we get here, we generate a native executable
-        # TODO : generate a native executable
+        # If there is the '-llvm' arg
+        if args.llvm:
+            print(llvm_code)
+            sys.exit(0)
+
+        # If we get there (no arg), we generate a native executable
+        vsop_llvm.generate_exec(llvm_code)
