@@ -8,16 +8,8 @@
 
 # Build the compiler
 vsopc: *.py
-	pyinstaller \
-		--onefile \
-		--distpath ./ \
-		--specpath ./build \
-		--workpath ./build \
-		--clean \
-		--name vsopc \
-		--add-data ../lexer/vsop_lextab.py:lexer/ \
-		--add-data ../parser/vsop_parsetab.py:parser/ \
-		main.py
+	cp main.py vsopc
+	chmod +x vsopc
 
 # Install any software needed to build the compiler
 # (we suppose that python3 is already installed)
@@ -26,7 +18,7 @@ install-tools:
 	sudo apt-get install --yes python-setuptools
 	yes | sudo pip3 install argparse
 	yes | sudo pip3 install ply
-	yes | sudo pip3 install pyinstaller
+	yes | sudo pip3 install llvmlite
 
 # Phony
 .PHONY: clean-workspace clean-exec clean
@@ -35,7 +27,6 @@ install-tools:
 clean-workspace:
 	@rm -f -r __pycache__/
 	@rm -f -r **/__pycache__/
-	@rm -f -r build/
 	@rm -f *.pyc
 	@rm -f **/parser.out
 

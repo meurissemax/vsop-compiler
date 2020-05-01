@@ -4,7 +4,7 @@
 
 The goal of this project was to build a small compiler for the **VSOP** language (created by C. Soldani and defined in the `vsop_manual.pdf` file).
 
-The compiler takes as input a `.vsop` file and generates as output a corresponding `.llvm` file. It also allows to view each step (lexing, parsing, ...) separately. 
+The compiler takes as input a `.vsop` file and generates as output a corresponding `.llvm` file. It also allows to view the output of each step (lexing, parsing, ...) separately. 
 
 This project was realized as part of the *Compilers* course given by Professor **Fontaine** to the master students of Civil Engineering at the [University of Liège](https://www.uliege.be/) during the academic year 2019-2020.
 
@@ -15,7 +15,7 @@ This VSOP compiler was done using **Python** with the help, mainly, of the [PLY]
 Other libraries were also used :
 
 * argparse
-* pyinstaller
+* llvmlite
 
 ## How to use the compiler ?
 

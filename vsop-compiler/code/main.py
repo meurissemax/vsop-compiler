@@ -98,14 +98,14 @@ if __name__ == '__main__':
             print(a_ast)
             sys.exit(0)
 
-        # If we get there, we generate the LLVM code
-        vsop_llvm = LLVM(a_ast)
-        llvm_code = vsop_llvm.generate()
+        # If we get there, we generate the LLVM IR code
+        vsop_llvm = LLVM(source, a_ast)
+        llvm_ir = vsop_llvm.generate_ir()
 
         # If there is the '-llvm' arg
         if args.llvm:
-            print(llvm_code)
+            print(llvm_ir)
             sys.exit(0)
 
         # If we get there (no arg), we generate a native executable
-        vsop_llvm.generate_exec(llvm_code)
+        vsop_llvm.generate_exec(llvm_ir)
