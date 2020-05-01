@@ -19,7 +19,6 @@
 #################
 
 # Executable
-**/build/
 vsopc
 
 # Parser
