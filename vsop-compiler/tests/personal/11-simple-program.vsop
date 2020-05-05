@@ -1,0 +1,31 @@
+class Parent {
+	fa : A;
+
+	methodParent(x : int32, b : bool) : bool {
+		true
+	}
+}
+
+class A {
+	a() : int32 {
+		0
+	}
+}
+
+class Child extends Parent {
+	fb : string;
+
+	methodChild(y : int32) : int32 {
+		0
+	}
+}
+
+class Main {
+	f1 : int32 <- 0;
+	f2 : string <- "test";
+	f3 : bool;
+
+	main() : int32 {
+		0
+	}
+}

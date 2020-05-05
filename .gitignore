@@ -23,3 +23,6 @@ vsopc
 
 # Parser
 parser.out
+
+# Output
+*.o
