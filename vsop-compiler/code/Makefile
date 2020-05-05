@@ -8,8 +8,8 @@
 
 # Build the compiler
 vsopc: *.py
-	cp main.py vsopc
-	chmod +x vsopc
+	@cp main.py vsopc
+	@chmod +x vsopc
 
 # Install any software needed to build the compiler
 # (we suppose that python3 is already installed)
@@ -29,6 +29,7 @@ clean-workspace:
 	@rm -f -r **/__pycache__/
 	@rm -f *.pyc
 	@rm -f **/parser.out
+	@rm -f ../tests/**/*.o
 
 # Clean the executable
 clean-exec:

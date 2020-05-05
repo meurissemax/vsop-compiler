@@ -13,7 +13,6 @@ Authors :
 ###########
 
 import os
-import copy
 
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
@@ -23,9 +22,9 @@ import llvmlite.binding as llvm
 # Type definitions #
 ####################
 
-int32 = ir.IntType(32)
-int8 = ir.IntType(8)
-boolean = ir.IntType(1)
+t_int32 = ir.IntType(32)
+t_bool = ir.IntType(1)
+t_string = ir.IntType(8)
 
 
 ###########
@@ -50,9 +49,91 @@ class LLVM:
         # Current IR builder
         self.builder = None
 
-        # Base symbol table that will contains all
-        # the symbol tables of the classes
-        self.__symbol_table = {}
+        # Symbol tables used during code generation
+        self.__class_table = {}
+        self.__field_table = {}
+        self.__parent_table = {}
+
+    ##########
+    # Others #
+    ##########
+
+    def __get_type(self, t):
+        if t == 'int32':
+            return t_int32
+        elif t == 'bool':
+            return t_bool
+        elif t == 'string':
+            return t_string.as_pointer()
+        else:
+            return self.__class_table[t].as_pointer()
+
+    ###################################
+    # LLVM IR elements initialization #
+    ###################################
+
+    def __initialize(self):
+        # Iterate over each class
+        for c in self.__a_ast.classes:
+
+            # Initialize structures
+            struct = ir.global_context.get_identified_type('struct.{}'.format(c.name))
+
+            # Add element to corresponding symbol table
+            self.__class_table[c.name] = struct
+
+        # Iterate over each class
+        for c in self.__a_ast.classes:
+
+            # Get structure and initialize VTable
+            struct = self.__class_table[c.name]
+            struct_vtable = ir.global_context.get_identified_type('struct.{}VTable'.format(c.name))
+
+            # Create the body of the structure (contains a pointer to the VTable)
+            struct.set_body(*[struct_vtable.as_pointer()])
+
+            # Create the field list
+            f_list = []
+
+            # Iterate over each field
+            for f in c.fields:
+                f_list += [(f.name, self.__get_type(f.type))]
+
+            # Create the method list
+            m_list = []
+
+            # Create the constructor of the class
+            constr_type = ir.FunctionType(struct.as_pointer(), ())
+            constr = ir.Function(self.module, constr_type, name='{}_new'.format(c.name))
+
+            m_list += [constr_type.as_pointer()]
+
+            # Iterate over each method
+            for m in c.methods:
+
+                # Declare method type
+                m_type = ir.FunctionType(
+                    self.__get_type(m.ret_type),
+                    [struct.as_pointer()] + [self.__get_type(f.type) for f in m.formals]
+                )
+
+                # Add method to the module
+                method = ir.Function(self.module, m_type, name='{}_{}'.format(c.name, m.name))
+
+                # Name each formal
+                for arg, f in zip(method.args, m.formals):
+                    arg.name = f.name
+
+                # Add method to the method list
+                m_list += [m_type.as_pointer()]
+
+            # Create the body of the VTable structure
+            struct_vtable.set_body(*m_list)
+
+            # Add (or update) element to corresponding symbol table
+            self.__class_table[c.name] = struct
+            self.__field_table[c.name] = f_list
+            self.__parent_table[c.name] = c.parent
 
     #############################################
     # LLVM IR code generation (node of the AST) #
@@ -242,45 +323,50 @@ class LLVM:
         context = ir.Context()
 
         # Module of object.ll
-        mod = ir.Module(name='object')
+        module = ir.Module(name='Object')
 
         # The two structures defined in object.ll
-        struct_object = context.get_identified_type('struct.Object')
-        struct_object_vtable = context.get_identified_type('struct.ObjectVTable')
+        struct = context.get_identified_type('struct.Object')
+        struct_vtable = context.get_identified_type('struct.ObjectVTable')
 
         # Create the body of the Object structure (contains a pointer to the VTable)
-        struct_object.set_body(struct_object_vtable.as_pointer())
+        struct.set_body(*[struct_vtable.as_pointer()])
 
-        # Set the methods types
-        obj_print_type = ir.FunctionType(struct_object.as_pointer(), (struct_object.as_pointer(), int8.as_pointer()))
-        obj_print_bool_type = ir.FunctionType(struct_object.as_pointer(), (struct_object.as_pointer(), boolean))
-        obj_print_int32_type = ir.FunctionType(struct_object.as_pointer(), (struct_object.as_pointer(), int32))
+        # Set the method types
+        m_print_type = ir.FunctionType(struct.as_pointer(), (struct.as_pointer(), t_string.as_pointer()))
+        m_print_bool_type = ir.FunctionType(struct.as_pointer(), (struct.as_pointer(), t_bool))
+        m_print_int32_type = ir.FunctionType(struct.as_pointer(), (struct.as_pointer(), t_int32))
 
-        obj_input_line_type = ir.FunctionType(int8.as_pointer(), (struct_object.as_pointer()))
-        obj_input_bool_type = ir.FunctionType(boolean, (struct_object.as_pointer()))
-        obj_input_int32_type = ir.FunctionType(int32, (struct_object.as_pointer()))
+        m_input_line_type = ir.FunctionType(t_string.as_pointer(), (struct.as_pointer()))
+        m_input_bool_type = ir.FunctionType(t_bool, (struct.as_pointer()))
+        m_input_int32_type = ir.FunctionType(t_int32, (struct.as_pointer()))
 
         # Declare the methods
-        obj_print = ir.Function(mod, obj_print_type, 'object_print')
-        obj_print_bool = ir.Function(mod, obj_print_bool_type, 'object_printBool')
-        obj_print_int32 = ir.Function(mod, obj_print_int32_type, 'object_printInt32')
+        m_print = ir.Function(module, m_print_type, 'Object_print')
+        m_print_bool = ir.Function(module, m_print_bool_type, 'Object_printBool')
+        m_print_int32 = ir.Function(mod, m_print_int32_type, 'Object_printInt32')
 
-        obj_input_line = ir.Function(mod, obj_input_line_type, 'object_inputLine')
-        obj_input_bool = ir.Function(mod, obj_input_bool_type, 'object_inputBool')
-        obj_input_int32 = ir.Function(mod, obj_input_int32_type, 'object_inputInt32')
+        m_input_line = ir.Function(module, m_input_line_type, 'Object_inputLine')
+        m_input_bool = ir.Function(module, m_input_bool_type, 'Object_inputBool')
+        m_input_int32 = ir.Function(module, m_input_int32_type, 'Object_inputInt32')
 
-        # Create the body of the VTable structure. Contains the previously defined functions in it.
-        struct_object_vtable.set_body(
-            obj_print.as_pointer(),
-            obj_print_bool.as_pointer(),
-            obj_print_int32.as_pointer(), 
-            obj_input_line.as_pointer(),
-            obj_input_bool.as_pointer(),
-            obj_input_int32.as_pointer()
-        )
+        # Create the body of the VTable structure
+        struct_vtable.set_body(*[
+            m_print_type.as_pointer(),
+            m_print_bool_type.as_pointer(),
+            m_print_int32_type.as_pointer(), 
+            m_input_line_type.as_pointer(),
+            m_input_bool_type.as_pointer(),
+            m_input_int32_type.as_pointer()
+        ])
 
-        # Finally, set the Object's shared vtable instance
-        pass
+        # Add structure to symbol table
+        self.__class_table['Object'] = struct
+        self.__field_table['Object'] = []
+        self.__parent_table['Object'] = None
+
+        # Return object element
+        return struct, struct_vtable
 
     ####################
     # Public functions #
@@ -296,6 +382,9 @@ class LLVM:
         #
         # 2) Generate code of each expression (field initializer
         #    and method body)
+
+        # Check all classes and methods and initialize it
+        self.__initialize()
 
         # Return LLVM IR code generated
         return str(self.module)
