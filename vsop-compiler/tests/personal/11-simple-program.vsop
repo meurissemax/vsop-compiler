@@ -21,11 +21,12 @@ class Child extends Parent {
 }
 
 class Main {
-	f1 : int32 <- 0;
+	f1 : int32 <- 42;
 	f2 : string <- "test";
 	f3 : bool;
 
 	main() : int32 {
+		print("test");
 		0
 	}
 }

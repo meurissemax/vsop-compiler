@@ -25,6 +25,7 @@ import llvmlite.binding as llvm
 t_int32 = ir.IntType(32)
 t_bool = ir.IntType(1)
 t_string = ir.IntType(8)
+t_unit = ir.VoidType()
 
 
 ###########
@@ -73,67 +74,96 @@ class LLVM:
     ###################################
 
     def __initialize(self):
-        # Iterate over each class
+        # We iterate over each class
         for c in self.__a_ast.classes:
 
-            # Initialize structures
+            # We initialize structures
             struct = ir.global_context.get_identified_type('struct.{}'.format(c.name))
 
-            # Add element to corresponding symbol table
+            # We add element to corresponding symbol table
             self.__class_table[c.name] = struct
 
-        # Iterate over each class
+        # We iterate over each class
         for c in self.__a_ast.classes:
 
-            # Get structure and initialize VTable
+            # We get structure and initialize VTable
             struct = self.__class_table[c.name]
             struct_vtable = ir.global_context.get_identified_type('struct.{}VTable'.format(c.name))
 
-            # Create the body of the structure (contains a pointer to the VTable)
+            # We create the body of the structure (contains a pointer to the VTable)
             struct.set_body(*[struct_vtable.as_pointer()])
 
-            # Create the field list
-            f_list = []
+            # We create the field dictionary
+            f_dict = {}
 
-            # Iterate over each field
+            # We iterate over each field
             for f in c.fields:
-                f_list += [(f.name, self.__get_type(f.type))]
 
-            # Create the method list
+                # We add [type, value] list in dictionary
+                f_dict[f.name] = [self.__get_type(f.type), None]
+
+            # We create the method list
             m_list = []
 
-            # Create the constructor of the class
+            # We create the constructor of the class
             constr_type = ir.FunctionType(struct.as_pointer(), ())
             constr = ir.Function(self.module, constr_type, name='{}_new'.format(c.name))
 
             m_list += [constr_type.as_pointer()]
 
-            # Iterate over each method
+            # We iterate over each method
             for m in c.methods:
 
-                # Declare method type
+                # We declare method type
                 m_type = ir.FunctionType(
                     self.__get_type(m.ret_type),
                     [struct.as_pointer()] + [self.__get_type(f.type) for f in m.formals]
                 )
 
-                # Add method to the module
+                # We add method to the module
                 method = ir.Function(self.module, m_type, name='{}_{}'.format(c.name, m.name))
 
-                # Name each formal
+                # We name each formal
                 for arg, f in zip(method.args, m.formals):
                     arg.name = f.name
 
-                # Add method to the method list
+                # We add method to the method list
                 m_list += [m_type.as_pointer()]
 
-            # Create the body of the VTable structure
+            # We create the body of the VTable structure
             struct_vtable.set_body(*m_list)
 
-            # Add (or update) element to corresponding symbol table
+            # We add (or update) element to corresponding symbol table
             self.__class_table[c.name] = struct
-            self.__field_table[c.name] = f_list
+            self.__field_table[c.name] = f_dict
             self.__parent_table[c.name] = c.parent
+
+    #############################
+    # LLVM IR fields management #
+    #############################
+
+    def __check_fields(self):
+        # We iterate over each class
+        for c in self.__a_ast.classes:
+
+            # We iterate over each field
+            for f in c.fields:
+
+                # If the field has a field initializer
+                if f.init_expr is not None:
+
+                    # We get the expression value
+                    init_value = self.__codegen(f.init_expr, [])
+
+                    # We update the symbol table
+                    self.__field_table[c.name][f.name][1] = init_value
+
+    ##############################
+    # LLVM IR methods management #
+    ##############################
+
+    def __check_methods(self):
+        pass
 
     #############################################
     # LLVM IR code generation (node of the AST) #
@@ -144,9 +174,9 @@ class LLVM:
         method = '_codegen_' + node.__class__.__name__
 
         # We return the LLVM IR code
-        return getattr(self, method)(node)
+        return getattr(self, method)(node, stack)
 
-    def __codegen_If(self, node, stack):
+    def _codegen_If(self, node, stack):
         # May not be entirely correct, to check.
         if_expr = self._codegen(node.cond_expr, symbolTable)
 
@@ -166,7 +196,7 @@ class LLVM:
             val = self.builder.phi() # What's the type of the If ?
             pass
 
-    def __codegen_While(self, node, stack):
+    def _codegen_While(self, node, stack):
         # Create the different blocks
         bl_cond = self.builder.append_basic_block("cond")
         bl_loop = self.builder.append_basic_block("loop")
@@ -189,7 +219,7 @@ class LLVM:
         self.builder.position_at_end(bl_end)
         return self.builder.ret_void()
 
-    def __codegen_Let(self, node, stack):
+    def _codegen_Let(self, node, stack):
         symbolTable = copy.deepcopy(symbTable)
 
         # Should we add a block ?
@@ -215,15 +245,15 @@ class LLVM:
 
         return self.builder._codegen(node.scope_expr, symbolTable)
 
-    def __codegen_Assign(self, node, stack):
+    def _codegen_Assign(self, node, stack):
         symbTable[node.name] = self._codegen(node.expr)
         return symbTable[node.name]
         # When is it called again ? 
 
-    def __codegen_UnOp(self, node, stack):
+    def _codegen_UnOp(self, node, stack):
         pass
 
-    def __codegen_BinOp(self, node, stack):
+    def _codegen_BinOp(self, node, stack):
         lhs = self._codegen(node.left_expr)
         rhs = self._codegen(node.right_expr)
         
@@ -248,33 +278,38 @@ class LLVM:
         else:
             raise CodegenError('Unknown binary operator', node.op)
 
-    def __codegen_Call(self, node, stack):
+    def _codegen_Call(self, node, stack):
         pass
 
-    def __codegen_New(self, node, stack):
+    def _codegen_New(self, node, stack):
         pass
 
-    def __codegen_Self(self, node, stack):
+    def _codegen_Self(self, node, stack):
         pass
 
-    def __codegen_ObjectIdentifier(self, node, stack):
+    def _codegen_ObjectIdentifier(self, node, stack):
         pass
 
-    def __codegen_Literal(self, node, stack):
-        if node._type == 'bool':
-            return ir.IntType()(1 if node.literal == 'true' else 0)
-        if node._type == 'int32':
-            return self.int32(node.literal)
-        if node._type == 'string':
-            return ir.Constant(ir.ArrayType(ir.IntType(8), len(node.literal)),
-                            bytearray((node.literal).encode("utf8")))
-        if node._type == 'unit':
-            return ir.VoidType()
+    def _codegen_Literal(self, node, stack):
+        # If literal is a 'int32'
+        if node.type == 'integer':
+            return ir.Constant(t_int32, int(node.literal))
 
-    def __codegen_Unit(self, node, stack):
-        pass
+        # If literal is a 'bool'
+        elif node.type == 'boolean':
+            return ir.Constant(t_bool, (1 if node.literal == 'true' else 0))
 
-    def __codegen_Block(self, node, stack):
+        # If literal is a 'string'
+        elif node.type == 'string':
+            return ir.Constant(
+                ir.ArrayType(t_string, len(node.literal)),
+                bytearray((node.literal).encode('utf8'))
+            )
+
+    def _codegen_Unit(self, node, stack):
+        return ir.Constant(t_unit, None)
+
+    def _codegen_Block(self, node, stack):
         block = self.builder.append_basic_block("in")
         end = self.builder.append_basic_block("end")
         # Copy the parent's symbol table but don't modify it since we are in a block,
@@ -295,7 +330,7 @@ class LLVM:
     # LLVM IR code generation (additional elements) #
     #################################################
 
-    def __codegen_pow(self, lhs, rhs):
+    def _codegen_pow(self, lhs, rhs):
         # Not sure whether or not this is correct
         if rhs == 0:
             return self.builder.add(1, 0, 'powtmp')
@@ -304,14 +339,14 @@ class LLVM:
         else:
             return self.builder.mul(self.builder.mul(lhs, 1, 'powtmp'), self._codegen_POW(lhs, rhs-1))
 
-    def __codegen_and(self, lhs, rhs):
+    def _codegen_and(self, lhs, rhs):
         # Not sure whether or not this is correct
         if lhs == True:
             return self.builder.icmp_signed("==", rhs, 1, 'andtmp')
         else:
             return self.builder.icmp_signed("==", lhs, 1, 'andtmp')
 
-    def __codegen_equal(self, lhs, rhs):
+    def _codegen_equal(self, lhs, rhs):
         pass
 
     ################
@@ -337,14 +372,14 @@ class LLVM:
         m_print_bool_type = ir.FunctionType(struct.as_pointer(), (struct.as_pointer(), t_bool))
         m_print_int32_type = ir.FunctionType(struct.as_pointer(), (struct.as_pointer(), t_int32))
 
-        m_input_line_type = ir.FunctionType(t_string.as_pointer(), (struct.as_pointer()))
-        m_input_bool_type = ir.FunctionType(t_bool, (struct.as_pointer()))
-        m_input_int32_type = ir.FunctionType(t_int32, (struct.as_pointer()))
+        m_input_line_type = ir.FunctionType(t_string.as_pointer(), (struct.as_pointer(),))
+        m_input_bool_type = ir.FunctionType(t_bool, (struct.as_pointer(),))
+        m_input_int32_type = ir.FunctionType(t_int32, (struct.as_pointer(),))
 
         # Declare the methods
         m_print = ir.Function(module, m_print_type, 'Object_print')
         m_print_bool = ir.Function(module, m_print_bool_type, 'Object_printBool')
-        m_print_int32 = ir.Function(mod, m_print_int32_type, 'Object_printInt32')
+        m_print_int32 = ir.Function(module, m_print_int32_type, 'Object_printInt32')
 
         m_input_line = ir.Function(module, m_input_line_type, 'Object_inputLine')
         m_input_bool = ir.Function(module, m_input_bool_type, 'Object_inputBool')
@@ -373,18 +408,17 @@ class LLVM:
     ####################
 
     def generate_ir(self):
-        # Generate LLVM IR code
-
-        # TO DO
-        # -----
-        # 1) Check all methods of all classes and create vtable
-        #    (structure in order to use it, but no value yet)
-        #
-        # 2) Generate code of each expression (field initializer
-        #    and method body)
+        # Create 'Object' element
+        self.__object_ir()
 
         # Check all classes and methods and initialize it
         self.__initialize()
+
+        # Check all fields initializer
+        self.__check_fields()
+
+        # Check all methods body
+        self.__check_methods()
 
         # Return LLVM IR code generated
         return str(self.module)
