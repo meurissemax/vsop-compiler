@@ -17,6 +17,8 @@ import os
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
 
+from llvm.symbol_tables import *
+
 
 ####################
 # Type definitions #
@@ -50,10 +52,12 @@ class LLVM:
         # Current IR builder
         self.builder = None
 
-        # Symbol tables used during code generation
-        self.__class_table = {}
-        self.__field_table = {}
-        self.__parent_table = {}
+        # Dictionary that associates each class to its symbol table
+        self.__symbol_table = {}
+
+        # Name of the current elements
+        self.__current_class = None
+        self.__current_method = None
 
     ##########
     # Others #
@@ -67,7 +71,7 @@ class LLVM:
         elif t == 'string':
             return t_string.as_pointer()
         else:
-            return self.__class_table[t].as_pointer()
+            return self.__symbol_table[t].struct.as_pointer()
 
     ###################################
     # LLVM IR elements initialization #
@@ -80,27 +84,24 @@ class LLVM:
             # We initialize structures
             struct = ir.global_context.get_identified_type('struct.{}'.format(c.name))
 
-            # We add element to corresponding symbol table
-            self.__class_table[c.name] = struct
+            # We add element to the symbol table
+            self.__symbol_table[c.name] = ClassSymbolTable(c.name, c.parent, struct)
 
         # We iterate over each class
         for c in self.__a_ast.classes:
 
             # We get structure and initialize VTable
-            struct = self.__class_table[c.name]
+            struct = self.__symbol_table[c.name].struct
             struct_vtable = ir.global_context.get_identified_type('struct.{}VTable'.format(c.name))
 
             # We create the body of the structure (contains a pointer to the VTable)
             struct.set_body(*[struct_vtable.as_pointer()])
 
-            # We create the field dictionary
-            f_dict = {}
-
             # We iterate over each field
             for f in c.fields:
 
-                # We add [type, value] list in dictionary
-                f_dict[f.name] = [self.__get_type(f.type), None]
+                # We add the element to the list of field
+                self.__symbol_table[c.name].fields[f.name] = FieldSymbolTable(f.name, self.__get_type(f.type))
 
             # We create the method list
             m_list = []
@@ -110,6 +111,8 @@ class LLVM:
             constr = ir.Function(self.module, constr_type, name='{}_new'.format(c.name))
 
             m_list += [constr_type.as_pointer()]
+
+            self.__symbol_table[c.name].methods['new'] = MethodSymbolTable('new', constr_type, constr)
 
             # We iterate over each method
             for m in c.methods:
@@ -121,7 +124,12 @@ class LLVM:
                 )
 
                 # We add method to the module
-                method = ir.Function(self.module, m_type, name='{}_{}'.format(c.name, m.name))
+                if c.name == 'Main' and m.name == 'main':
+                    m_name = 'main'
+                else:
+                    m_name = '{}_{}'.format(c.name, m.name)
+
+                method = ir.Function(self.module, m_type, name=m_name)
 
                 # We name each formal
                 for arg, f in zip(method.args, m.formals):
@@ -130,13 +138,15 @@ class LLVM:
                 # We add method to the method list
                 m_list += [m_type.as_pointer()]
 
+                # We add the method to the symbol table
+                self.__symbol_table[c.name].methods[m.name] = MethodSymbolTable(m.name, m_type, method)
+
             # We create the body of the VTable structure
             struct_vtable.set_body(*m_list)
 
-            # We add (or update) element to corresponding symbol table
-            self.__class_table[c.name] = struct
-            self.__field_table[c.name] = f_dict
-            self.__parent_table[c.name] = c.parent
+            # We add (or update) element to symbol table
+            self.__symbol_table[c.name].struct = struct
+            self.__symbol_table[c.name].struct_vtable = struct_vtable
 
     #############################
     # LLVM IR fields management #
@@ -156,14 +166,25 @@ class LLVM:
                     init_value = self.__codegen(f.init_expr, [])
 
                     # We update the symbol table
-                    self.__field_table[c.name][f.name][1] = init_value
+                    self.__symbol_table[c.name].fields[f.name].value = init_value
 
     ##############################
     # LLVM IR methods management #
     ##############################
 
     def __check_methods(self):
-        pass
+        # We iterate over each class
+        for c in self.__a_ast.classes:
+
+            # We iterate over each method
+            for m in c.methods:
+
+                # We update current information
+                self.__current_class = c.name
+                self.__current_method = m.name
+
+                # We generate LLVM IR code of each method
+                self.__codegen(m.block, [])
 
     #############################################
     # LLVM IR code generation (node of the AST) #
@@ -310,21 +331,27 @@ class LLVM:
         return ir.Constant(t_unit, None)
 
     def _codegen_Block(self, node, stack):
-        block = self.builder.append_basic_block("in")
-        end = self.builder.append_basic_block("end")
-        # Copy the parent's symbol table but don't modify it since we are in a block,
-        # so all variables are local
-        sTable = copy.deepcopy(symbTable)
+        # We get the current function
+        function = self.__symbol_table[self.__current_class].methods[self.__current_method].function
 
-        for expression in range(node.expr_list)-1:
-            self._codegen(node.expr_list[expression], sTable)
+        # We append the block
+        block = function.append_basic_block()
 
-        value = self._codegen(node.expr_list[-1], sTable)
+        # We update the builder
+        self.builder = ir.IRBuilder(block)
 
-        self.builder.branch(end)
-        self.builder.position_at_end(end)
+        # We generate code for each expression
+        for e in range(len(node.expr_list) - 1):
+            self.__codegen(e, stack)
 
-        return value
+        # We get the return value
+        ret = self.__codegen(node.expr_list[-1], stack)
+
+        # We update the builder
+        self.builder.ret(ret)
+
+        return ret
+
 
     #################################################
     # LLVM IR code generation (additional elements) #
@@ -396,12 +423,16 @@ class LLVM:
         ])
 
         # Add structure to symbol table
-        self.__class_table['Object'] = struct
-        self.__field_table['Object'] = []
-        self.__parent_table['Object'] = None
+        self.__symbol_table['Object'] = ClassSymbolTable('Object', None, struct)
+        self.__symbol_table['Object'].struct_vtable = struct_vtable
 
-        # Return object element
-        return struct, struct_vtable
+        self.__symbol_table['Object'].methods['print'] = MethodSymbolTable('print', m_print_type, m_print)
+        self.__symbol_table['Object'].methods['printBool'] = MethodSymbolTable('printBool', m_print_bool_type, m_print_bool)
+        self.__symbol_table['Object'].methods['printInt32'] = MethodSymbolTable('printInt32', m_print_int32_type, m_print_int32)
+
+        self.__symbol_table['Object'].methods['inputLine'] = MethodSymbolTable('inputLine', m_input_line_type, m_input_line)
+        self.__symbol_table['Object'].methods['inputBool'] = MethodSymbolTable('inputBool', m_input_bool_type, m_input_bool)
+        self.__symbol_table['Object'].methods['inputInt32'] = MethodSymbolTable('inputInt32', m_input_int32_type, m_input_int32)
 
     ####################
     # Public functions #
