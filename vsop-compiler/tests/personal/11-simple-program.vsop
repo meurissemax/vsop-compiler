@@ -26,7 +26,6 @@ class Main {
 	f3 : bool;
 
 	main() : int32 {
-		print("test");
 		0
 	}
 }
