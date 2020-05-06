@@ -25,7 +25,18 @@ class Main {
 	f2 : string <- "test";
 	f3 : bool;
 
-	main() : int32 {
+	test() : int32 {
+		0;
+		while true do 0;
 		0
+	}
+
+	main() : int32 {
+		if true then
+			0
+		else
+			if false then
+				1
+			else 0
 	}
 }

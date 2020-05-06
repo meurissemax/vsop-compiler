@@ -198,46 +198,87 @@ class LLVM:
         return getattr(self, method)(node, stack)
 
     def _codegen_If(self, node, stack):
-        # May not be entirely correct, to check.
-        if_expr = self._codegen(node.cond_expr, symbolTable)
+        # We get the comparison value
+        cond_val = self.__codegen(node.cond_expr, stack)
+        cmp_val = self.builder.fcmp_ordered('!=', cond_val, ir.Constant(ir.DoubleType(), 0.0), 'notnull')
 
-        # No else
-        if node.else_expr == None:
-            with self.builder.if_then(if_expr):
-                return self._codegen(node.then_expr)
+        # We create basic blocks to express the control flow
+        then_bb = self.builder.append_basic_block('then')
 
+        if node.else_expr is not None:
+            else_bb = self.builder.append_basic_block('else')
+
+        merge_bb = self.builder.append_basic_block('endif')
+
+        # We branch to either then_bb or merge/else_bb depending on 'cmp_val'
+        if node.else_expr is not None:
+            self.builder.cbranch(cmp_val, then_bb, else_bb)
         else:
-            with self.builder.if_else as (then, otherwise):
-                with then:
-                    bl_then = self.builder.basic_block
-                    val_then = self._codegen(node.then_expr, symbolTable)
-                with otherwise:
-                    bl_other = self.builder.basic_block
-                    val_other = self._codegen(node.else_expr, symbolTable)
-            val = self.builder.phi() # What's the type of the If ?
-            pass
+            self.builder.cbranch(cmp_val, then_bb, merge_bb)
+
+        # We emit the 'then' part
+        self.builder.position_at_start(then_bb)
+
+        then_val = self.__codegen(node.then_expr, stack)
+
+        self.builder.branch(merge_bb)
+
+        # The emission of 'then_val' could have generated a new basic block 
+        # (and thus modified the current basic block). To properly set up
+        # the PHI, we remember which block the 'then' part ends in.
+        then_bb = self.builder.block
+
+        # We emit the 'else' part
+        if node.else_expr is not None:
+            self.builder.position_at_start(else_bb)
+
+            else_val = self.__codegen(node.else_expr, stack)
+
+            self.builder.branch(merge_bb)
+
+            # Same remark as for 'then_val'
+            else_bb = self.builder.block
+
+        # We emit the 'merge' block
+        self.builder.position_at_start(merge_bb)
+
+        phi = self.builder.phi(ir.DoubleType(), 'ifval')
+        phi.add_incoming(then_val, then_bb)
+
+        if node.else_expr is not None:
+            phi.add_incoming(else_val, else_bb)
+
+        return phi
 
     def _codegen_While(self, node, stack):
-        # Create the different blocks
-        bl_cond = self.builder.append_basic_block("cond")
-        bl_loop = self.builder.append_basic_block("loop")
-        bl_end = self.builder.append_basic_block("end")
+        # We create the basic blocks
+        cond_bb = self.builder.append_basic_block('cond')
+        loop_bb = self.builder.append_basic_block('loop')
+        end_bb = self.builder.append_basic_block('end')
 
-        # Evaluate the condition
-        self.builder.branch(bl_cond)
-        self.builder.position_at_end(bl_cond)
-        cond_expr = self._codegen(node.cond_expr, symbolTable)
+        # We evaluate the condition
+        cond_val = self.__codegen(node.cond_expr, stack)
+        cmp_val = self.builder.fcmp_ordered('!=', cond_val, ir.Constant(ir.DoubleType(), 0.0), 'notnull')
 
-        # Conditional jump to the loop of to the end
-        self.builder.cbranch(cond_expr, bl_loop, bl_end)
+        # We branch to either loop_bb or end_bb depending on 'cmp_val'
+        self.builder.cbranch(cmp_val, loop_bb, end_bb)
 
-        # Creation of the loop
-        self.builder.position_at_end(bl_loop)
-        loop_expr = self._codegen(node, symbolTable)
-        self.builder.branch(bl_cond)
+        # We emit the 'loop' part
+        self.builder.position_at_start(loop_bb)
 
-        # End of the loop
-        self.builder.position_at_end(bl_end)
+        loop_val = self.__codegen(node.body_expr, stack)
+
+        self.builder.branch(cond_bb)
+
+        # The emission of 'loop_val' could have generated a new basic block 
+        # (and thus modified the current basic block). To properly set up
+        # the PHI, we remember which block the 'then' part ends in.
+        loop_bb = self.builder.block
+
+        # We emit the 'end' block
+        self.builder.position_at_start(end_bb)
+
+        # We return the value
         return self.builder.ret_void()
 
     def _codegen_Let(self, node, stack):
@@ -341,8 +382,8 @@ class LLVM:
         self.builder = ir.IRBuilder(block)
 
         # We generate code for each expression
-        for e in range(len(node.expr_list) - 1):
-            self.__codegen(e, stack)
+        for i in range(len(node.expr_list) - 1):
+            self.__codegen(node.expr_list[i], stack)
 
         # We get the return value
         ret = self.__codegen(node.expr_list[-1], stack)
@@ -364,14 +405,14 @@ class LLVM:
         elif rhs == 1:
             return self.builder.mul(lhs, 1, 'powtmp')
         else:
-            return self.builder.mul(self.builder.mul(lhs, 1, 'powtmp'), self._codegen_POW(lhs, rhs-1))
+            return self.builder.mul(self.builder.mul(lhs, 1, 'powtmp'), self._codegen_pow(lhs, rhs-1))
 
     def _codegen_and(self, lhs, rhs):
         # Not sure whether or not this is correct
         if lhs == True:
-            return self.builder.icmp_signed("==", rhs, 1, 'andtmp')
+            return self.builder.icmp_signed('==', rhs, 1, 'andtmp')
         else:
-            return self.builder.icmp_signed("==", lhs, 1, 'andtmp')
+            return self.builder.icmp_signed('==', lhs, 1, 'andtmp')
 
     def _codegen_equal(self, lhs, rhs):
         pass
