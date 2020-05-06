@@ -351,7 +351,7 @@ class Semantic:
                 # If the expected return type is a primitive type
                 if ret_type in self.__primitive_types:
                     if ret_type != block_type:
-                        self.__print_error(m.block, m.block, 'return type of the method "{}" is not conform with his signature ("{}" expected but "{}")'.format(m.name, ret_type, block_type))
+                        self.__print_error(m.block.lineno, m.block.column, 'return type of the method "{}" is not conform with his signature ("{}" expected but "{}")'.format(m.name, ret_type, block_type))
 
                 # If the expected return type is a 'class' type
                 else:
@@ -359,7 +359,7 @@ class Semantic:
                         block_type_ancestors = self.__get_ancestors(block_type)
 
                         if ret_type not in block_type_ancestors:
-                            self.__print_error(m.block, m.block, 'return type of the method "{}" is not conform with his signature'.format(m.name))
+                            self.__print_error(m.block.lineno, m.block.column, 'return type of the method "{}" is not conform with his signature'.format(m.name))
 
     def __lookup_method(self, stack, method_name):
         # We iterate over each symbol table on the stack
