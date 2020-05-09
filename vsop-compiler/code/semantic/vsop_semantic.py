@@ -703,7 +703,7 @@ class Semantic:
             current_class = self.__get_current_class(stack)
 
             if current_class is None:
-                self.__print_error(expr.lineno, expr.column, '"self" not allowed in this contexte')
+                self.__print_error(expr.lineno, expr.column, '"self" not allowed in this context')
 
             return current_class
 
