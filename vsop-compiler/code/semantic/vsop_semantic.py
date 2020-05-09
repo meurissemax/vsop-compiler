@@ -63,7 +63,7 @@ class Semantic:
 
         object_class.methods['print'] = MethodSymbolTable(None, None, 'print', {'s': FieldSymbolTable(None, None, 's', 'string')}, 'Object')
         object_class.methods['printBool'] = MethodSymbolTable(None, None, 'printBool', {'b': FieldSymbolTable(None, None, 'b', 'bool')}, 'Object')
-        object_class.methods['printInt32'] = MethodSymbolTable(None, None, 'printInt32', {'i': FieldSymbolTable(None, None, 'b', 'int32')}, 'Object')
+        object_class.methods['printInt32'] = MethodSymbolTable(None, None, 'printInt32', {'i': FieldSymbolTable(None, None, 'i', 'int32')}, 'Object')
 
         object_class.methods['inputLine'] = MethodSymbolTable(None, None, 'inputLine', {}, 'string')
         object_class.methods['inputBool'] = MethodSymbolTable(None, None, 'inputBool', {}, 'bool')
