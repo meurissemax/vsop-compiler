@@ -34,6 +34,7 @@ t_unit = ir.VoidType()
 t_int8 = ir.IntType(8)
 t_int64 = ir.IntType(64)
 t_double = ir.DoubleType()
+t_void = ir.VoidType()
 
 
 ###########
@@ -64,9 +65,11 @@ class LLVM:
         # Dictionary to store imported functions
         self.__imported_functions = {}
 
-        # Current class and method
+        # A counter to manage global strings
+        self.__count_string = 0
+
+        # Current class name during analyzing phase
         self.__current_class = None
-        self.__current_method = None
 
     #############
     # Utilities #
@@ -103,6 +106,25 @@ class LLVM:
                 # We return the number of fields
                 return len(c.fields)
 
+    def __get_position(self, d, name):
+        # We iterate over the element of the dictionary
+        for i, k in enumerate(d.keys()):
+
+            # We check if we found the element
+            if k == name:
+                return i
+
+    def __lookup(self, stack, name):
+        # We iterate over each element
+        for d in stack:
+
+            # We check if the value exist
+            if d.get(name) is not None:
+                return d[name]
+
+        # Else we return a 'None'
+        return None
+
     ##################
     # Initialization #
     ##################
@@ -117,6 +139,9 @@ class LLVM:
         # We initialize constructor (methods 'new' and 'init')
         # of each class
         self.__initialize_constr()
+
+        # We add primitives types to the symbol table
+        self.__initialize_primitives()
 
     def __import_functions(self):
         # We create the 'malloc' function
@@ -140,7 +165,7 @@ class LLVM:
         self.__imported_functions['strcmp'] = strcmp_f
 
     def __initialize_st(self):
-        # First, we add the 'Object' class to the symbol table
+        # We add the 'Object' class to the symbol table
         self.__initialize_object()
 
         # We iterate over each class
@@ -229,7 +254,7 @@ class LLVM:
 
             parent = self.__symbol_table[c.name]['parent']
 
-            while parent != None:
+            while parent is not None:
                 d_fields = self.__concatenate_dict(self.__symbol_table[parent]['fields'], d_fields)
                 d_methods = self.__concatenate_dict(self.__symbol_table[parent]['methods'], d_methods)
 
@@ -309,7 +334,7 @@ class LLVM:
         struct_vtable.set_body(*[
             m_print_type.as_pointer(),
             m_print_bool_type.as_pointer(),
-            m_print_int32_type.as_pointer(), 
+            m_print_int32_type.as_pointer(),
             m_input_line_type.as_pointer(),
             m_input_bool_type.as_pointer(),
             m_input_int32_type.as_pointer()
@@ -370,24 +395,24 @@ class LLVM:
 
         # We create the body of the init
         block = init.append_basic_block()
-        self.builder = ir.IRBuilder(block)
+        self.__builder = ir.IRBuilder(block)
 
         # We create basic block
         if_bb = init.append_basic_block('if')
         endif_bb = init.append_basic_block('endif')
 
         # We compare the element to 'null'
-        cmp_val = self.builder.icmp_signed('!=', init.args[0], ir.Constant(struct.as_pointer(), None))
-        self.builder.cbranch(cmp_val, if_bb, endif_bb)
+        cmp_val = self.__builder.icmp_signed('!=', init.args[0], ir.Constant(struct.as_pointer(), None))
+        self.__builder.cbranch(cmp_val, if_bb, endif_bb)
 
         # We contruct the 'if' basic block
-        self.builder.position_at_end(if_bb)
+        self.__builder.position_at_end(if_bb)
 
-        bitcast = self.builder.bitcast(init.args[0], self.__symbol_table[parent]['struct'].as_pointer())
-        self.builder.call(self.__symbol_table[parent]['init'], (bitcast,))
+        bitcast = self.__builder.bitcast(init.args[0], self.__symbol_table[parent]['struct'].as_pointer())
+        self.__builder.call(self.__symbol_table[parent]['init'], (bitcast,))
 
-        gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(0)], inbounds=True)
-        self.builder.store(self.__symbol_table[name]['global_vtable'], gep)
+        gep = self.__builder.gep(init.args[0], [t_int32(0), t_int32(0)], inbounds=True)
+        self.__builder.store(self.__symbol_table[name]['global_vtable'], gep)
 
         # Initialize fields' value
         number_fields = len(self.__symbol_table[name]['fields'])
@@ -396,7 +421,7 @@ class LLVM:
             f = list(self.__symbol_table[name]['fields'].values())[i]
 
             if f['init_expr'] is not None:
-                init_val = self.__codegen(f['init_expr'])
+                init_val = self.__codegen(f['init_expr'], [])
             else:
                 if f['type'] == 'int32':
                     init_val = ir.Constant(t_int32, 0)
@@ -404,18 +429,27 @@ class LLVM:
                     init_val = ir.Constant(t_bool, 0)
                 elif f['type'] == 'string':
                     string = ''
-                    init_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(string)), bytearray(string.encode('utf8')))
+                    string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(string)), bytearray(string.encode('utf8')))
+
+                    global_val = ir.GlobalVariable(self.__module, string_val.type, name='string_{}'.format(self.__count_string))
+                    global_val.linkage = ''
+                    global_val.global_constant = True
+                    global_val.initializer = string_val
+
+                    init_val = self.__builder.gep(global_val, [t_int32(0), t_int32(0)], inbounds=True)
+
+                    self.__count_string += 1
                 else:
-                    init_val = ir.Constant(self.__symbol_table[f['type']]['struct'], None)
+                    init_val = ir.Constant(self.__symbol_table[f['type']]['struct'].as_pointer(), None)
 
-            gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(i + 1)])
-            self.builder.store(init_val, gep)
+            gep = self.__builder.gep(init.args[0], [t_int32(0), t_int32(i + 1)])
+            self.__builder.store(init_val, gep)
 
-        self.builder.branch(endif_bb)
+        self.__builder.branch(endif_bb)
 
         # We construct the 'endif' basic block
-        self.builder.position_at_end(endif_bb)
-        self.builder.ret(init.args[0])
+        self.__builder.position_at_end(endif_bb)
+        self.__builder.ret(init.args[0])
 
         # We save the init
         self.__symbol_table[name]['init'] = init
@@ -432,19 +466,26 @@ class LLVM:
 
         # We create the body of the constructor
         block = constr.append_basic_block()
-        self.builder = ir.IRBuilder(block)
+        self.__builder = ir.IRBuilder(block)
 
-        gep = self.builder.gep(ir.Constant(struct.as_pointer(), None), [t_int32(1)], name='size_as_ptr')
-        ptrtoint = self.builder.ptrtoint(gep, t_int64, name='size_as_i64')
+        gep = self.__builder.gep(ir.Constant(struct.as_pointer(), None), [t_int32(1)], name='size_as_ptr')
+        ptrtoint = self.__builder.ptrtoint(gep, t_int64, name='size_as_i64')
 
-        ptr = self.builder.call(self.__imported_functions['malloc'], [ptrtoint])
-        bitcast = self.builder.bitcast(ptr, struct.as_pointer())
-        ret = self.builder.call(self.__symbol_table[name]['init'], [bitcast])
+        ptr = self.__builder.call(self.__imported_functions['malloc'], [ptrtoint])
+        bitcast = self.__builder.bitcast(ptr, struct.as_pointer())
+        ret = self.__builder.call(self.__symbol_table[name]['init'], [bitcast])
 
-        self.builder.ret(ret)
+        self.__builder.ret(ret)
 
         # We save the constructor
         self.__symbol_table[name]['new'] = constr
+
+    def __initialize_primitives(self):
+        # We add primitives types to the symbol table
+        self.__symbol_table['int32'] = {'struct': t_int32}
+        self.__symbol_table['bool'] = {'struct': t_bool}
+        self.__symbol_table['string'] = {'struct': t_string}
+        self.__symbol_table['unit'] = {'struct': t_unit}
 
     ###########
     # Analyze #
@@ -464,65 +505,117 @@ class LLVM:
             # We iterate over each method
             for m in c.methods:
 
-                # We update the current method
-                self.__current_method = m.name
+                # We get useful information
+                d_method = self.__symbol_table[c.name]['methods'][m.name]
 
-                # We analyze each method
-                self.__codegen(m.block)
+                # We create a block
+                block = d_method['obj'].append_basic_block()
+
+                # We set the builder
+                self.__builder = ir.IRBuilder(block)
+
+                # We create a dictionary for the arguments
+                d_args = {}
+
+                # We check if we are in the main method of the program
+                if c.name == 'Main' and m.name == 'main':
+                    # We allocate space for self
+                    alloca = self.__builder.alloca(self.__symbol_table[c.name]['struct'].as_pointer())
+
+                    # We get the 'new' function
+                    f_new = self.__symbol_table[c.name]['new']
+
+                    # Call the function
+                    value = self.__builder.call(f_new, ())
+
+                    # Store the value
+                    self.__builder.store(value, alloca)
+
+                    # We add the element to the dictionary
+                    d_args['self'] = alloca
+                else:
+                    # We get the args
+                    args = d_method['obj'].args
+
+                    # The first argument is the object itself
+                    alloca = self.__builder.alloca(args[0].type)
+                    self.__builder.store(args[0], alloca)
+                    d_args['self'] = alloca
+
+                    # We iterate over each formals
+                    for i, f in enumerate(d_method['args'].values()):
+
+                        # We allocate space
+                        alloca = self.__builder.alloca(args[i + 1].type)
+
+                        # We store the value
+                        self.__builder.store(args[i + 1], alloca)
+
+                        # We add the formal to the dictionnary
+                        d_args[f] = alloca
+
+                # We analyze the body of the method
+                value = self.__codegen(m.block, [d_args])
+
+                # We return the value
+                if value == t_void:
+                    self.__builder.ret_void()
+                else:
+                    self.__builder.ret(value)
 
     ###################
     # Code generation #
     ###################
 
-    def __codegen(self, node):
+    def __codegen(self, node, stack):
         # We get the method name corresponding to the node
         method = '_codegen_' + node.__class__.__name__
 
         # We return the value of the expression
-        return getattr(self, method)(node)
+        return getattr(self, method)(node, stack)
 
-    def _codegen_If(self, node):
+    def _codegen_If(self, node, stack):
         # We get the comparison value
-        cond_val = self.__codegen(node.cond_expr)
-        cmp_val = self.builder.fcmp_ordered('!=', cond_val, ir.Constant(ir.DoubleType(), 0.0), 'notnull')
+        cond_val = self.__codegen(node.cond_expr, stack)
+        cmp_val = self.__builder.fcmp_ordered('!=', cond_val, ir.Constant(ir.DoubleType(), 0.0), 'notnull')
 
         # We create basic blocks to express the control flow
-        then_bb = self.builder.append_basic_block('then')
+        then_bb = self.__builder.append_basic_block('then')
 
         if node.else_expr is not None:
-            else_bb = self.builder.append_basic_block('else')
+            else_bb = self.__builder.append_basic_block('else')
 
-        merge_bb = self.builder.append_basic_block('endif')
+        merge_bb = self.__builder.append_basic_block('endif')
 
         # We branch to either then_bb or merge/else_bb depending on 'cmp_val'
         if node.else_expr is not None:
-            self.builder.cbranch(cmp_val, then_bb, else_bb)
+            self.__builder.cbranch(cmp_val, then_bb, else_bb)
         else:
-            self.builder.cbranch(cmp_val, then_bb, merge_bb)
+            self.__builder.cbranch(cmp_val, then_bb, merge_bb)
 
         # We emit the 'then' part
-        self.builder.position_at_start(then_bb)
-        then_val = self.__codegen(node.then_expr)
-        self.builder.branch(merge_bb)
+        self.__builder.position_at_start(then_bb)
+        then_val = self.__codegen(node.then_expr, stack)
+        self.__builder.branch(merge_bb)
 
-        # The emission of 'then_val' could have generated a new basic block 
+        # The emission of 'then_val' could have generated a new basic block
         # (and thus modified the current basic block). To properly set up
         # the PHI, we remember which block the 'then' part ends in.
-        then_bb = self.builder.block
+        then_bb = self.__builder.block
 
         # We emit the 'else' part
         if node.else_expr is not None:
-            self.builder.position_at_start(else_bb)
-            else_val = self.__codegen(node.else_expr)
-            self.builder.branch(merge_bb)
+            self.__builder.position_at_start(else_bb)
+            else_val = self.__codegen(node.else_expr, stack)
+            self.__builder.branch(merge_bb)
 
             # Same remark as for 'then_val'
-            else_bb = self.builder.block
+            else_bb = self.__builder.block
 
         # We emit the 'merge' block
-        self.builder.position_at_start(merge_bb)
+        self.__builder.position_at_start(merge_bb)
 
-        phi = self.builder.phi(ir.DoubleType(), 'ifval')
+        phi = self.__builder.phi(ir.DoubleType(), 'ifval')
         phi.add_incoming(then_val, then_bb)
 
         if node.else_expr is not None:
@@ -530,87 +623,267 @@ class LLVM:
 
         return phi
 
-    def _codegen_While(self, node):
+    def _codegen_While(self, node, stack):
         # We create basic blocks
-        cond_bb = self.builder.append_basic_block('cond')
-        loop_bb = self.builder.append_basic_block('loop')
-        end_bb = self.builder.append_basic_block('endwhile')
+        cond_bb = self.__builder.append_basic_block('cond')
+        loop_bb = self.__builder.append_basic_block('loop')
+        end_bb = self.__builder.append_basic_block('endwhile')
 
         # We enter the condition
-        self.builder.branch(cond_bb)
+        self.__builder.branch(cond_bb)
 
         # We build the condition
-        self.builder.position_at_end(cond_bb)
-        cond_val = self.__codegen(node.cond_expr)
-        self.builder.cbranch(cond_val, loop_bb, end_bb)
+        self.__builder.position_at_end(cond_bb)
+        cond_val = self.__codegen(node.cond_expr, stack)
+        self.__builder.cbranch(cond_val, loop_bb, end_bb)
 
         # We build the loop
-        self.builder.position_at_end(loop_bb)
-        loop_val = self.__codegen(node.body_expr)
-        self.builder.branch(cond_bb)
+        self.__builder.position_at_end(loop_bb)
+        loop_val = self.__codegen(node.body_expr, stack)
+        self.__builder.branch(cond_bb)
 
         # We return after the loop
-        self.builder.position_at_end(end_bb)
+        self.__builder.position_at_end(end_bb)
 
         # We return a void type
         return t_void
 
-    def _codegen_Let(self, node):
-        pass
+    def _codegen_Let(self, node, stack):
+        # We get the type of the assignee
+        assignee_type = self.__symbol_table[node.type]['struct']
 
-    def _codegen_Assign(self, node):
-        pass
+        # We allocate space for the argument
+        arg_ptr = self.__builder.alloca(assignee_type)
 
-    def _codegen_UnOp(self, node):
+        # If the element is initialized
+        if node.init_expr is not None:
+
+            # We get the value of the initialize
+            value = self.__codegen(node.init_expr, stack)
+
+            # We cast and store the value
+            cast = self.__builder.bitcast(value, assignee_type)
+            self.__builder.store(cast, arg_ptr)
+
+        # If the element is not initialized
+        else:
+
+            # We create a null value
+            value = ir.Constant(assignee_type, None)
+            self.__builder.store(value, arg_ptr)
+
+        # Create a new symbol table (dictionary) for the 'let'
+        d_let = {node.name: arg_ptr}
+
+        # Return the value of the block
+        return self.__codegen(node.scope_expr, [d_let] + stack)
+
+    def _codegen_Assign(self, node, stack):
+        # We get the type of the assignee
+        assignee_type = self.__symbol_table[node.expr_type]['struct']
+
+        # We get the value assigned
+        value = self.__codegen(node.expr, stack)
+
+        # We get the pointer to the assignee
+        assignee_ptr = self.__lookup(stack, node.name)
+
+        # If the pointer exists, it means that the assignee
+        # is an argument of a function
+        if assignee_ptr is not None:
+
+            # We cast the value
+            cast = self.__builder.bitcast(value, assignee_type)
+
+            # We store the new value
+            self.__builder.store(cast, assignee_ptr)
+
+        # If it is not an argument of a function, it means
+        # that it is a field of an object
+        else:
+
+            # We get the pointer to the element itself
+            ptr_self = self.__builder.load(self.__lookup(stack, 'self'))
+
+            # We get field information
+            d_field = self.__symbol_table[self.__current_class]['fields'][node.name]
+
+            # We get the field offset
+            field_offset = self.__get_position(self.__symbol_table[self.__current_class]['fields'], node.name)
+            field_offset += 1
+
+            # We get the pointer to the field
+            ptr_field = self.__builder.gep(ptr_self, [t_int32(0), t_int32(field_offset)], inbounds=True)
+
+            # We cast the value
+            cast = self.__builder.bitcast(value, self.__get_type(d_field['type']))
+
+            # We store the new value
+            self.__builder.store(cast, ptr_field)
+
+        # We return the value
+        return value
+
+    def _codegen_UnOp(self, node, stack):
         # We get the value of the expression
-        expr_value = self.__codegen(node.expr)
+        expr_value = self.__codegen(node.expr, stack)
 
         # We call the corresponding method
         if node.op == 'not':
-            pass # TO DO
+            if expr_value == t_bool(1):
+                return t_bool(0)
+            else:
+                return t_bool(1)
         elif node.op == '-':
-            return self.builder.sub(ir.Constant(t_int32, 0), expr_value, 'subtmp')
+            return self.__builder.sub(t_int32(0), expr_value, 'subtmp')
         elif node.op == 'isnull':
-            pass # TO DO
+            return self.__builder.icmp_signed('!=', expr_value, ir.Constant(self.__get_type(node.expr.expr_type).as_pointer(), None))
 
-    def _codegen_BinOp(self, node):
+    def _codegen_BinOp(self, node, stack):
         # We get left and right operands
-        lhs = self.__codegen(node.left_expr)
-        rhs = self.__codegen(node.right_expr)
+        lhs = self.__codegen(node.left_expr, stack)
+        rhs = self.__codegen(node.right_expr, stack)
 
         # We call the corresponding method
         if node.op == 'and':
-            pass # TO DO
+            if lhs == t_bool(1):
+                if rhs == t_bool(1):
+                    return t_bool(1)
+
+            return t_bool(0)
         elif node.op == '=':
-            pass # TO DO
+            expr_type = node.left_expr.type
+
+            if expr_type in ['int32', 'bool']:
+                return self.__builder.icmp_signed('==', lhs, rhs)
+            elif expr_type == 'string':
+                call = self.__builder.call(self.__imported_functions['strcmp'], [lhs, rhs])
+
+                return self.__builder.icmp_signed('==', call, t_int32(0))
+            elif expr_type == 'unit':
+                return t_bool(1)
+            else:
+                obj_type = self.__symbol_table['Object']['struct']
+
+                lhs_addr = self.__builder.bitcast(lhs, obj_type)
+                rhs_addr = self.__builder.bitcast(rhs, obj_type)
+
+                return self.__builder.icmp_signed('==', lhs_addr, rhs_addr)
         elif node.op == '<':
-            return self.builder.icmp_signed('<', lhs, rhs, 'lowtmp')
+            return self.__builder.icmp_signed('<', lhs, rhs, 'lowtmp')
         elif node.op == '<=':
-            return self.builder.icmp_signed('<=', lhs, rhs, 'loweqtmp')
+            return self.__builder.icmp_signed('<=', lhs, rhs, 'loweqtmp')
         elif node.op == '+':
-            return self.builder.add(lhs, rhs, 'addtmp')
+            return self.__builder.add(lhs, rhs, 'addtmp')
         elif node.op == '-':
-            return self.builder.sub(lhs, rhs, 'subtmp')
+            return self.__builder.sub(lhs, rhs, 'subtmp')
         elif node.op == '*':
-            return self.builder.mul(lhs, rhs, 'multmp')
+            return self.__builder.mul(lhs, rhs, 'multmp')
         elif node.op == '/':
-            return self.builder.sdiv(lhs, rhs, 'divtmp')
+            return self.__builder.sdiv(lhs, rhs, 'divtmp')
         elif node.op == '^':
-            pass # TO DO
+            # We cast the operands to 'double' (in order to call the
+            # 'pow' function)
+            lhs_double = self.__builder.uitofp(lhs, t_double)
+            rhs_double = self.__builder.uitofp(rhs, t_double)
 
-    def _codegen_Call(self, node):
-        pass
+            # Call the 'pow' function
+            call = self.__builder.call(self.__imported_functions['pow'], (lhs_double, rhs_double))
 
-    def _codegen_New(self, node):
-        pass
+            # Return the result (converted to int)
+            return self.__builder.fptoui(call, t_int32)
 
-    def _codegen_Self(self, node):
-        pass
+    def _codegen_Call(self, node, stack):
+        # We get the pointer to the caller
+        ptr_caller = self.__codegen(node.obj_expr, stack)
 
-    def _codegen_ObjectIdentifier(self, node):
-        pass
+        # We get the type (class name) of the caller
+        ptr_type = node.obj_expr.expr_type
 
-    def _codegen_Literal(self, node):
+        # We get useful information
+        d_class = self.__symbol_table[ptr_type]
+        d_method = d_class['methods'][node.method_name]
+
+        # We get the position of the method in the VTable
+        method_offset = self.__get_position(self.__symbol_table[ptr_type]['methods'], node.method_name)
+
+        # We get the VTable
+        gep_vtable = self.__builder.gep(ptr_caller, [t_int32(0), t_int32(0)], inbounds=True)
+        vtable = self.__builder.load(gep_vtable)
+
+        # We get the method
+        gep_method = self.__builder.gep(vtable, [t_int32(0), t_int32(method_offset)], inbounds=True)
+        method = self.__builder.load(gep_method)
+
+        # We cast the element, if necessary
+        if d_method['obj'].args[0] != d_class['struct']:
+            ptr_caller = self.__builder.bitcast(ptr_caller, d_method['obj_type'].args[0])
+
+        # We get the argument list
+        args_list = [ptr_caller]
+
+        # We iterate over each argument
+        for i, arg in enumerate(node.expr_list):
+
+            # We get the value of the argument
+            arg_value = self.__codegen(arg, stack)
+
+            # We cast the argument
+            arg_value = self.__builder.bitcast(arg_value, d_method['obj_type'].args[i + 1])
+
+            # We add the argument to the list
+            args_list += [arg_value]
+
+        # We call the method
+        return self.__builder.call(method, args_list)
+
+    def _codegen_New(self, node, stack):
+        # We get the 'new' function of the element
+        f_new = self.__symbol_table[node.type_name]['new']
+
+        # We call the 'new' function and return the element
+        return self.__builder.call(f_new, ())
+
+    def _codegen_Self(self, node, stack):
+        # The only case where the class 'Self' is used is
+        # in the 'Call' node. So we have to return a pointer
+        # to the element itself (element which call the
+        # method)
+        return self.__builder.load(self.__lookup(stack, 'self'))
+
+    def _codegen_ObjectIdentifier(self, node, stack):
+        # We get the element
+        e = self.__lookup(stack, node.id)
+
+        # If the element exists, it means that it is an
+        # argument of the function
+        if e is not None:
+
+            # We store the value
+            value = self.__builder.load(e)
+
+        # If the element does not exist, it means that it
+        # is a field of the object
+        else:
+
+            # We get the pointer to the element itself
+            ptr_self = self.__builder.load(self.__lookup(stack, 'self'))
+
+            # We get the position of the field in the object structure
+            offset = self.__get_position(self.__symbol_table[self.__current_class]['fields'], node.id)
+
+            # Because the first element of the structure is the VTable
+            offset += 1
+
+            # We get the pointer to the field
+            ptr_field = self.__builder.gep(ptr_self, [t_int32(0), t_int32(offset)], inbounds=True)
+
+            # We store the value
+            value = self.__builder.load(ptr_field)
+
+        return value
+
+    def _codegen_Literal(self, node, stack):
         # If literal is a 'int32'
         if node.type == 'integer':
             return ir.Constant(t_int32, int(node.literal))
@@ -621,26 +894,28 @@ class LLVM:
 
         # If literal is a 'string'
         elif node.type == 'string':
-            return ir.Constant(
-                ir.ArrayType(t_string, len(node.literal)),
-                bytearray((node.literal).encode('utf8'))
-            )
+            string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(node.literal)), bytearray(node.literal.encode('utf8')))
 
-    def _codegen_Unit(self, node):
-        pass
+            global_val = ir.GlobalVariable(self.__module, string_val.type, name='string_{}'.format(self.__count_string))
+            global_val.linkage = ''
+            global_val.global_constant = True
+            global_val.initializer = string_val
 
-    def _codegen_Block(self, node):
-        # We get the current method
-        m = self.__symbol_table[self.__current_class]['methods'][self.__current_method]['obj']
+            self.__count_string += 1
 
-        # We append the block
-        block = m.append_basic_block()
+            return self.__builder.gep(global_val, [t_int32(0), t_int32(0)], inbounds=True)
 
-        # We update the builder
-        self.builder = ir.IRBuilder(block)
+    def _codegen_Unit(self, node, stack):
+        return t_unit
 
+    def _codegen_Block(self, node, stack):
+        # We iterate over each expression
+        for e in node.expr_list:
+            value = self.__codegen(e, stack)
 
-        return ret
+        # We return the value of the block (i.e. the value
+        # of the last expression of the block)
+        return value
 
     ####################
     # Public functions #
