@@ -24,5 +24,13 @@ vsopc
 # Parser
 parser.out
 
-# Output files
-*.o
+# Intermediate files
+*.ll
+*.s
+
+
+##############
+# Exceptions #
+##############
+
+!vsop-compiler/code/llvm/object/object.ll

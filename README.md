@@ -4,13 +4,13 @@
 
 The goal of this project was to build a small compiler for the **VSOP** language (created by C. Soldani and defined in the `vsop_manual.pdf` file).
 
-The compiler takes as input a `.vsop` file and generates as output a corresponding `.llvm` file. It also allows to view the output of each step (lexing, parsing, ...) separately. 
+The compiler takes as input a `.vsop` file and generates as output a corresponding executable file. It also allows to view the output of each step (lexing, parsing, ...) separately. 
 
 This project was realized as part of the *Compilers* course given by Professor **Fontaine** to the master students of Civil Engineering at the [University of Liège](https://www.uliege.be/) during the academic year 2019-2020.
 
 ## Language
 
-This VSOP compiler was done using **Python** with the help, mainly, of the [PLY](https://www.dabeaz.com/ply/) tool.
+This VSOP compiler was done using **python** with the help, mainly, of the [PLY](https://www.dabeaz.com/ply/) tool.
 
 Other libraries were also used :
 
@@ -23,7 +23,7 @@ The compiler implementation can be found in the `vsop-compiler/code/` folder.
 
 All the resources of a tool (lexer, parser, ...) are in the folder of the same name.
 
-To install all the necessary tools (assuming python is already installed), just do :
+To install all the necessary tools (assuming python 3 is already installed), just do :
 
 ```bash
 make install-tools

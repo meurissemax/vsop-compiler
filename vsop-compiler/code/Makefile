@@ -29,7 +29,8 @@ clean-workspace:
 	@rm -f -r **/__pycache__/
 	@rm -f *.pyc
 	@rm -f **/parser.out
-	@rm -f ../tests/**/*.o
+	@rm -f ../tests/**/*.ll
+	@rm -f ../tests/**/*.s
 
 # Clean the executable
 clean-exec:
