@@ -84,6 +84,8 @@ class LLVM:
             return t_bool
         elif t == 'string':
             return t_string
+        elif t == 'unit':
+            return t_unit
         else:
             return self.__symbol_table[t]['struct'].as_pointer()
 
@@ -309,6 +311,7 @@ class LLVM:
 
             body_list = [self.__symbol_table[c.name]['struct_vtable'].as_pointer()] + fields_type_list
             self.__symbol_table[c.name]['struct'].set_body(*body_list)
+            self.__symbol_table[c.name]['struct'] = self.__symbol_table[c.name]['struct'].as_pointer()
 
             # We set the 'struct_vtable' of the class
             self.__symbol_table[c.name]['struct_vtable'].set_body(*obj_type_l)
@@ -456,7 +459,7 @@ class LLVM:
                 elif f['type'] == 'bool':
                     init_val = ir.Constant(t_bool, 0)
                 elif f['type'] == 'string':
-                    string = ''
+                    string = chr(0)
                     string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(string)), bytearray(string.encode('utf8')))
 
                     global_val = ir.GlobalVariable(self.__module, string_val.type, name='string_{}'.format(self.__count_string))
@@ -571,7 +574,9 @@ class LLVM:
                     d_args['self'] = alloca
 
                     # We iterate over each formals
-                    for i, f in enumerate(d_method['args'].values()):
+                    i = 0
+
+                    for name, f in d_method['args'].items():
 
                         # We allocate space
                         alloca = self.__builder.alloca(args[i + 1].type)
@@ -580,7 +585,10 @@ class LLVM:
                         self.__builder.store(args[i + 1], alloca)
 
                         # We add the formal to the dictionnary
-                        d_args[f] = alloca
+                        d_args[name] = alloca
+
+                        # We increment the counter
+                        i += 1
 
                 # We analyze the body of the method
                 value = self.__codegen(m.block, [d_args])
@@ -603,53 +611,45 @@ class LLVM:
         return getattr(self, method)(node, stack)
 
     def _codegen_If(self, node, stack):
-        # We get the comparison value
+        # We create the basic block
+        if_true = self.__builder.append_basic_block('if_true')
+
+        if node.else_expr is not None:
+            if_false = self.__builder.append_basic_block('if_false')
+
+        end_if = self.__builder.append_basic_block('end_if')
+
+        # We get the return type and allocate space
+        ret_type = self.__get_type(node.expr_type)
+        alloca = self.__builder.alloca(ret_type)
+
+        # We get the condition value and branch
         cond_val = self.__codegen(node.cond_expr, stack)
-        cmp_val = self.__builder.fcmp_ordered('!=', cond_val, ir.Constant(ir.DoubleType(), 0.0), 'notnull')
-
-        # We create basic blocks to express the control flow
-        then_bb = self.__builder.append_basic_block('then')
 
         if node.else_expr is not None:
-            else_bb = self.__builder.append_basic_block('else')
-
-        merge_bb = self.__builder.append_basic_block('endif')
-
-        # We branch to either then_bb or merge/else_bb depending on 'cmp_val'
-        if node.else_expr is not None:
-            self.__builder.cbranch(cmp_val, then_bb, else_bb)
+            self.__builder.cbranch(cond_val, if_true, if_false)
         else:
-            self.__builder.cbranch(cmp_val, then_bb, merge_bb)
+            self.__builder.cbranch(cond_val, if_true, end_if)
 
-        # We emit the 'then' part
-        self.__builder.position_at_start(then_bb)
-        then_val = self.__codegen(node.then_expr, stack)
-        self.__builder.branch(merge_bb)
+        # We build the 'if_true' part
+        self.__builder.position_at_end(if_true)
+        if_true_val = self.__codegen(node.then_expr, stack)
+        if_true_val = self.__builder.bitcast(if_true_val, ret_type)
+        self.__builder.store(if_true_val, alloca)
+        self.__builder.branch(end_if)
 
-        # The emission of 'then_val' could have generated a new basic block
-        # (and thus modified the current basic block). To properly set up
-        # the PHI, we remember which block the 'then' part ends in.
-        then_bb = self.__builder.block
-
-        # We emit the 'else' part
+        # We build the 'if_false' part
         if node.else_expr is not None:
-            self.__builder.position_at_start(else_bb)
-            else_val = self.__codegen(node.else_expr, stack)
-            self.__builder.branch(merge_bb)
+            self.__builder.position_at_end(if_false)
+            if_false_val = self.__codegen(node.else_expr, stack)
+            if_false_val = self.__builder.bitcast(if_false_val, ret_type)
+            self.__builder.store(if_false_val, alloca)
+            self.__builder.branch(end_if)
 
-            # Same remark as for 'then_val'
-            else_bb = self.__builder.block
+        # We build the 'end_if' part
+        self.__builder.position_at_end(end_if)
 
-        # We emit the 'merge' block
-        self.__builder.position_at_start(merge_bb)
-
-        phi = self.__builder.phi(ir.DoubleType(), 'ifval')
-        phi.add_incoming(then_val, then_bb)
-
-        if node.else_expr is not None:
-            phi.add_incoming(else_val, else_bb)
-
-        return phi
+        return self.__builder.load(alloca)
 
     def _codegen_While(self, node, stack):
         # We create basic blocks
@@ -730,6 +730,10 @@ class LLVM:
         # that it is a field of an object
         else:
 
+            # We skip 'unit' type
+            if node.expr_type == 'unit':
+                return t_unit
+
             # We get the pointer to the element itself
             ptr_self = self.__builder.load(self.__lookup(stack, 'self'))
 
@@ -765,61 +769,72 @@ class LLVM:
         elif node.op == '-':
             return self.__builder.sub(t_int32(0), expr_value, 'subtmp')
         elif node.op == 'isnull':
-            return self.__builder.icmp_signed('!=', expr_value, ir.Constant(self.__get_type(node.expr.expr_type).as_pointer(), None))
+            return self.__builder.icmp_signed('==', expr_value, ir.Constant(self.__get_type(node.expr.expr_type).as_pointer(), None))
 
     def _codegen_BinOp(self, node, stack):
-        # We get left and right operands
-        lhs = self.__codegen(node.left_expr, stack)
-        rhs = self.__codegen(node.right_expr, stack)
-
-        # We call the corresponding method
+        # We check if we are in a 'and' case. We need to know because
+        # in this case, we do not evaluate directly both operands
         if node.op == 'and':
+
+            # We get left operand
+            lhs = self.__codegen(node.left_expr, stack)
+
             if lhs == t_bool(1):
+
+                # We get right operand
+                rhs = self.__codegen(node.right_expr, stack)
+
                 if rhs == t_bool(1):
                     return t_bool(1)
 
             return t_bool(0)
-        elif node.op == '=':
-            expr_type = node.left_expr.type
+        else:
+            # We get left and right operands
+            lhs = self.__codegen(node.left_expr, stack)
+            rhs = self.__codegen(node.right_expr, stack)
 
-            if expr_type in ['int32', 'bool']:
-                return self.__builder.icmp_signed('==', lhs, rhs)
-            elif expr_type == 'string':
-                call = self.__builder.call(self.__imported_functions['strcmp'], [lhs, rhs])
+            # We check according to the operator
+            if node.op == '=':
+                expr_type = node.left_expr.expr_type
 
-                return self.__builder.icmp_signed('==', call, t_int32(0))
-            elif expr_type == 'unit':
-                return t_bool(1)
-            else:
-                obj_type = self.__symbol_table['Object']['struct']
+                if expr_type in ['integer', 'boolean']:
+                    return self.__builder.icmp_signed('==', lhs, rhs)
+                elif expr_type == 'string':
+                    call = self.__builder.call(self.__imported_functions['strcmp'], [lhs, rhs])
 
-                lhs_addr = self.__builder.bitcast(lhs, obj_type)
-                rhs_addr = self.__builder.bitcast(rhs, obj_type)
+                    return self.__builder.icmp_signed('==', call, t_int32(0))
+                elif expr_type == 'unit':
+                    return t_bool(1)
+                else:
+                    obj_type = self.__symbol_table['Object']['struct']
 
-                return self.__builder.icmp_signed('==', lhs_addr, rhs_addr)
-        elif node.op == '<':
-            return self.__builder.icmp_signed('<', lhs, rhs, 'lowtmp')
-        elif node.op == '<=':
-            return self.__builder.icmp_signed('<=', lhs, rhs, 'loweqtmp')
-        elif node.op == '+':
-            return self.__builder.add(lhs, rhs, 'addtmp')
-        elif node.op == '-':
-            return self.__builder.sub(lhs, rhs, 'subtmp')
-        elif node.op == '*':
-            return self.__builder.mul(lhs, rhs, 'multmp')
-        elif node.op == '/':
-            return self.__builder.sdiv(lhs, rhs, 'divtmp')
-        elif node.op == '^':
-            # We cast the operands to 'double' (in order to call the
-            # 'pow' function)
-            lhs_double = self.__builder.uitofp(lhs, t_double)
-            rhs_double = self.__builder.uitofp(rhs, t_double)
+                    lhs_addr = self.__builder.bitcast(lhs, obj_type)
+                    rhs_addr = self.__builder.bitcast(rhs, obj_type)
 
-            # Call the 'pow' function
-            call = self.__builder.call(self.__imported_functions['pow'], (lhs_double, rhs_double))
+                    return self.__builder.icmp_signed('==', lhs_addr, rhs_addr)
+            elif node.op == '<':
+                return self.__builder.icmp_signed('<', lhs, rhs, 'lowtmp')
+            elif node.op == '<=':
+                return self.__builder.icmp_signed('<=', lhs, rhs, 'loweqtmp')
+            elif node.op == '+':
+                return self.__builder.add(lhs, rhs, 'addtmp')
+            elif node.op == '-':
+                return self.__builder.sub(lhs, rhs, 'subtmp')
+            elif node.op == '*':
+                return self.__builder.mul(lhs, rhs, 'multmp')
+            elif node.op == '/':
+                return self.__builder.sdiv(lhs, rhs, 'divtmp')
+            elif node.op == '^':
+                # We cast the operands to 'double' (in order to call the
+                # 'pow' function)
+                lhs_double = self.__builder.uitofp(lhs, t_double)
+                rhs_double = self.__builder.uitofp(rhs, t_double)
 
-            # Return the result (converted to int)
-            return self.__builder.fptoui(call, t_int32)
+                # Call the 'pow' function
+                call = self.__builder.call(self.__imported_functions['pow'], (lhs_double, rhs_double))
+
+                # Return the result (converted to int)
+                return self.__builder.fptoui(call, t_int32)
 
     def _codegen_Call(self, node, stack):
         # We get the pointer to the caller

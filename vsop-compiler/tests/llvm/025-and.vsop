@@ -1,0 +1,14 @@
+class Main {
+    main() : int32 {
+        if { print("OK\n"); true } and { print("OK\n"); true } then
+            print("OK\n")
+        else print("KO\n");
+        if { print("OK\n"); true } and { print("OK\n"); false } then
+            print("KO\n")
+        else print("OK\n");
+        if { print("OK\n"); false } and { print("KO\n"); true } then
+            print("KO\n")
+        else print("OK\n");
+        0
+    }
+}
