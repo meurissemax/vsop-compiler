@@ -125,6 +125,32 @@ class LLVM:
         # Else we return a 'None'
         return None
 
+    def __process_string(self, s):
+        # We remove first and last character (because
+        # it is '"')
+        s = s[1:-1]
+
+        # We change all the \xXX sequence
+        charbuf = []
+        i = 0
+
+        while i < len(s):
+            if s[i] == '\\':
+                char_hex = '0{}'.format(s[i + 1:i + 4])
+                charbuf += [chr(int(char_hex, 16))]
+
+                i += 4
+            else:
+                charbuf += [s[i]]
+
+                i += 1
+
+        # We add a terminaison character
+        charbuf += [chr(0)]
+
+        # We return the processed string
+        return ''.join(charbuf)
+
     ##################
     # Initialization #
     ##################
@@ -886,15 +912,17 @@ class LLVM:
     def _codegen_Literal(self, node, stack):
         # If literal is a 'int32'
         if node.type == 'integer':
-            return ir.Constant(t_int32, int(node.literal))
+            return t_int32(node.literal)
 
         # If literal is a 'bool'
         elif node.type == 'boolean':
-            return ir.Constant(t_bool, (1 if node.literal == 'true' else 0))
+            return t_bool(1 if node.literal == 'true' else 0)
 
         # If literal is a 'string'
         elif node.type == 'string':
-            string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(node.literal)), bytearray(node.literal.encode('utf8')))
+            string = self.__process_string(node.literal)
+
+            string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(string)), bytearray(string.encode('utf8')))
 
             global_val = ir.GlobalVariable(self.__module, string_val.type, name='string_{}'.format(self.__count_string))
             global_val.linkage = ''
