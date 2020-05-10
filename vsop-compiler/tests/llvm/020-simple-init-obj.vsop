@@ -1,0 +1,13 @@
+class MightyClass {
+    saySomething() : Object {
+        print("I am allmighty!\n")
+    }
+}
+class Main {
+    mighty : MightyClass <- new MightyClass;
+
+    main() : int32 {
+        mighty.saySomething();
+        0
+    }
+}

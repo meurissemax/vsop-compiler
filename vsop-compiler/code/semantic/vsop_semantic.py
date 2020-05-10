@@ -540,7 +540,7 @@ class Semantic:
                 self.__print_error(expr.expr.lineno, expr.expr.column, 'non conform assigned type "{}"'.format(assign_type))
 
         # We return the type of the expression
-        return assign_type
+        return field.type
 
     def __analyze_expr_unop(self, expr, stack):
         # We get the type of the expression

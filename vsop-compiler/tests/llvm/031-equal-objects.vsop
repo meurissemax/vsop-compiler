@@ -1,4 +1,3 @@
-
 class Main {
     main() : int32 {
         if self = self then print("OK\n") else print("KO\n");
