@@ -34,10 +34,3 @@ parser.out
 # Intermediate files
 *.ll
 *.s
-
-
-##############
-# Exceptions #
-##############
-
-!vsop-compiler/code/llvm/object/object.ll

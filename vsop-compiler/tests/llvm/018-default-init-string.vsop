@@ -1,0 +1,8 @@
+class Main {
+    s : string;
+
+    main() : int32 {
+        print("s = \"").print(s).print("\"\n");
+        0
+    }
+}
