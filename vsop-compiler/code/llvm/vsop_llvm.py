@@ -87,7 +87,7 @@ class LLVM:
         elif t == 'unit':
             return t_unit
         else:
-            return self.__symbol_table[t]['struct'].as_pointer()
+            return self.__symbol_table[t]['struct']
 
     def __concatenate_dict(self, d1, d2):
         # We create a new dictionary based on 'd1'
@@ -258,9 +258,17 @@ class LLVM:
                 args_list = [self.__symbol_table[c.name]['struct'].as_pointer()]
 
                 for t in value['args'].values():
-                    args_list += [self.__get_type(t)]
+                    if t in ['int32', 'bool', 'string', 'unit', 'Object']:
+                        args_list += [self.__get_type(t)]
+                    else:
+                        args_list += [self.__get_type(t).as_pointer()]
 
-                obj_type = ir.FunctionType(self.__get_type(value['ret']), (args_list))
+                if value['ret'] in ['int32', 'bool', 'string', 'unit', 'Object']:
+                    ret_f = self.__get_type(value['ret'])
+                else:
+                    ret_f = self.__get_type(value['ret']).as_pointer()
+
+                obj_type = ir.FunctionType(ret_f, (args_list))
 
                 # We set the name of the method
                 if c.name == 'Main' and key == 'main':
@@ -307,11 +315,13 @@ class LLVM:
             fields_type_list = []
 
             for key, value in self.__symbol_table[c.name]['fields'].items():
-                fields_type_list += [self.__get_type(value['type'])]
+                if value['type'] in ['int32', 'bool', 'string', 'unit', 'Object']:
+                    fields_type_list += [self.__get_type(value['type'])]
+                else:
+                    fields_type_list += [self.__symbol_table[value['type']]['struct'].as_pointer()]
 
             body_list = [self.__symbol_table[c.name]['struct_vtable'].as_pointer()] + fields_type_list
             self.__symbol_table[c.name]['struct'].set_body(*body_list)
-            self.__symbol_table[c.name]['struct'] = self.__symbol_table[c.name]['struct'].as_pointer()
 
             # We set the 'struct_vtable' of the class
             self.__symbol_table[c.name]['struct_vtable'].set_body(*obj_type_l)
@@ -328,6 +338,10 @@ class LLVM:
             d_class['global_vtable'] = ir.GlobalVariable(self.__module, const.type, name='{}_vtable'.format(c.name))
             d_class['global_vtable'].initializer = const
             d_class['global_vtable'].global_constant = True
+
+        # We iterate over each class
+        for c in self.__a_ast.classes:
+            self.__symbol_table[c.name]['struct'] = self.__symbol_table[c.name]['struct'].as_pointer()
 
     def __initialize_object(self):
         # Opaque context reference to group modules into logical groups
@@ -390,7 +404,7 @@ class LLVM:
 
         # We create the dictionary for the 'Object' element
         d_object = {
-            'struct': struct,
+            'struct': struct.as_pointer(),
             'struct_vtable': struct_vtable,
             'global_vtable': ir.GlobalVariable(module, struct_vtable, name='Object_vtable'),
             'new': constr,
@@ -419,7 +433,7 @@ class LLVM:
         parent = self.__symbol_table[name]['parent']
 
         # We create the type of the init
-        init_type = ir.FunctionType(struct.as_pointer(), (struct.as_pointer(),))
+        init_type = ir.FunctionType(struct, (struct,))
 
         # We create the init
         init = ir.Function(self.__module, init_type, name='{}_init'.format(name))
@@ -433,13 +447,13 @@ class LLVM:
         endif_bb = init.append_basic_block('endif')
 
         # We compare the element to 'null'
-        cmp_val = self.__builder.icmp_signed('!=', init.args[0], ir.Constant(struct.as_pointer(), None))
+        cmp_val = self.__builder.icmp_signed('!=', init.args[0], ir.Constant(struct, None))
         self.__builder.cbranch(cmp_val, if_bb, endif_bb)
 
         # We contruct the 'if' basic block
         self.__builder.position_at_end(if_bb)
 
-        bitcast = self.__builder.bitcast(init.args[0], self.__symbol_table[parent]['struct'].as_pointer())
+        bitcast = self.__builder.bitcast(init.args[0], self.__symbol_table[parent]['struct'])
         self.__builder.call(self.__symbol_table[parent]['init'], (bitcast,))
 
         gep = self.__builder.gep(init.args[0], [t_int32(0), t_int32(0)], inbounds=True)
@@ -471,7 +485,7 @@ class LLVM:
 
                     self.__count_string += 1
                 else:
-                    init_val = ir.Constant(self.__symbol_table[f['type']]['struct'].as_pointer(), None)
+                    init_val = ir.Constant(self.__symbol_table[f['type']]['struct'], None)
 
             gep = self.__builder.gep(init.args[0], [t_int32(0), t_int32(i + 1)])
             self.__builder.store(init_val, gep)
@@ -490,7 +504,7 @@ class LLVM:
         struct = self.__symbol_table[name]['struct']
 
         # We create the type of the constructor
-        constr_type = ir.FunctionType(struct.as_pointer(), ())
+        constr_type = ir.FunctionType(struct, ())
 
         # We create the constructor
         constr = ir.Function(self.__module, constr_type, name='{}_new'.format(name))
@@ -499,11 +513,11 @@ class LLVM:
         block = constr.append_basic_block()
         self.__builder = ir.IRBuilder(block)
 
-        gep = self.__builder.gep(ir.Constant(struct.as_pointer(), None), [t_int32(1)], name='size_as_ptr')
+        gep = self.__builder.gep(ir.Constant(struct, None), [t_int32(1)], name='size_as_ptr')
         ptrtoint = self.__builder.ptrtoint(gep, t_int64, name='size_as_i64')
 
         ptr = self.__builder.call(self.__imported_functions['malloc'], [ptrtoint])
-        bitcast = self.__builder.bitcast(ptr, struct.as_pointer())
+        bitcast = self.__builder.bitcast(ptr, struct)
         ret = self.__builder.call(self.__symbol_table[name]['init'], [bitcast])
 
         self.__builder.ret(ret)
@@ -551,7 +565,7 @@ class LLVM:
                 # We check if we are in the main method of the program
                 if c.name == 'Main' and m.name == 'main':
                     # We allocate space for self
-                    alloca = self.__builder.alloca(self.__symbol_table[c.name]['struct'].as_pointer())
+                    alloca = self.__builder.alloca(self.__symbol_table[c.name]['struct'])
 
                     # We get the 'new' function
                     f_new = self.__symbol_table[c.name]['new']
@@ -611,45 +625,53 @@ class LLVM:
         return getattr(self, method)(node, stack)
 
     def _codegen_If(self, node, stack):
-        # We create the basic block
-        if_true = self.__builder.append_basic_block('if_true')
-
-        if node.else_expr is not None:
-            if_false = self.__builder.append_basic_block('if_false')
-
-        end_if = self.__builder.append_basic_block('end_if')
-
-        # We get the return type and allocate space
-        ret_type = self.__get_type(node.expr_type)
-        alloca = self.__builder.alloca(ret_type)
-
-        # We get the condition value and branch
+        # We get the condition value
         cond_val = self.__codegen(node.cond_expr, stack)
 
-        if node.else_expr is not None:
-            self.__builder.cbranch(cond_val, if_true, if_false)
+        # If there is no 'else' branch
+        if node.else_expr is None:
+            with self.__builder.if_then(cond_val) as then:
+                v = self.__codegen(node.then_expr, stack)
+
+            return t_unit
+
+        # If the return type is 'unit'
+        elif node.expr_type == 'unit':
+            with self.__builder.if_else(cond_val) as (then, otherwise):
+                with then:
+                    v_then = self.__codegen(node.then_expr, stack)
+                with otherwise:
+                    v_otherwise = self.__codegen(node.else_expr, stack)
+
+            return t_unit
+
         else:
-            self.__builder.cbranch(cond_val, if_true, end_if)
+            # We get the type of the 'If'
+            type_if = self.__symbol_table[node.expr_type]['struct']
 
-        # We build the 'if_true' part
-        self.__builder.position_at_end(if_true)
-        if_true_val = self.__codegen(node.then_expr, stack)
-        if_true_val = self.__builder.bitcast(if_true_val, ret_type)
-        self.__builder.store(if_true_val, alloca)
-        self.__builder.branch(end_if)
+            # We allocate memory for return type
+            ptr_if = self.__builder.alloca(type_if)
 
-        # We build the 'if_false' part
-        if node.else_expr is not None:
-            self.__builder.position_at_end(if_false)
-            if_false_val = self.__codegen(node.else_expr, stack)
-            if_false_val = self.__builder.bitcast(if_false_val, ret_type)
-            self.__builder.store(if_false_val, alloca)
-            self.__builder.branch(end_if)
+            # We check branches
+            with self.__builder.if_else(cond_val) as (then, otherwise):
+                with then:
+                    v_then = self.__codegen(node.then_expr, stack)
 
-        # We build the 'end_if' part
-        self.__builder.position_at_end(end_if)
+                    # We cast the value
+                    v_cast = self.__builder.bitcast(v_then, type_if)
 
-        return self.__builder.load(alloca)
+                    # We store the value
+                    self.__builder.store(v_cast, ptr_if)
+                with otherwise:
+                    v_otherwise = self.__codegen(node.else_expr, stack)
+
+                    # We cast the value
+                    v_cast = self.__builder.bitcast(v_otherwise, type_if)
+
+                    # We store the value
+                    self.__builder.store(v_cast, ptr_if)
+
+            return self.__builder.load(ptr_if)
 
     def _codegen_While(self, node, stack):
         # We create basic blocks
@@ -797,7 +819,7 @@ class LLVM:
             if node.op == '=':
                 expr_type = node.left_expr.expr_type
 
-                if expr_type in ['integer', 'boolean']:
+                if expr_type in ['int32', 'bool', 'integer', 'boolean']:
                     return self.__builder.icmp_signed('==', lhs, rhs)
                 elif expr_type == 'string':
                     call = self.__builder.call(self.__imported_functions['strcmp'], [lhs, rhs])

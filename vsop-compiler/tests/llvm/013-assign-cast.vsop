@@ -1,0 +1,13 @@
+class Main {
+    obj : Object;
+
+    useObject(obj : Object) : Object {
+        obj.print("This argument looks like it is a valid Object object.\n")
+    }
+
+    main() : int32 {
+        obj <- self; // OK, as Main extends Object
+        useObject(obj); // Should not trigger any error, as obj is a valid Object
+        0
+    }
+}
