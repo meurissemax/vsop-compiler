@@ -1,3 +1,17 @@
+"""
+INFO0085-1 - Compilers
+University of Liege
+Academic year 2019-2020
+
+Authors :
+    - Maxime Meurisse
+    - Valentin Vermeylen
+"""
+
+# This variable contains the LLVM IR code of the 'Object' class
+# written by C. Soldani.
+
+object_llvm = r"""
 ; This file is mostly generated from the C code, with just a touch of cleanup
 ; by hand to make it more portable and legible.
 
@@ -374,3 +388,5 @@ define internal void @skip_while(i32 (i32)*) {
 19:                                               ; preds = %16, %14
   ret void
 }
+
+"""

@@ -1,0 +1,7 @@
+class Main {
+    main() : int32 {
+        print(if true then "OK\n" else "KO\n");
+        print(if false then "KO\n" else "OK\n");
+        0
+    }
+}

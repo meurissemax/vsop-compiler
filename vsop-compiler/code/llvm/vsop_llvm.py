@@ -14,6 +14,8 @@ Authors :
 
 import os
 
+import llvm.predefined as predefined
+
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
 
@@ -965,8 +967,7 @@ class LLVM:
         llvm_ir = llvm_ir.split('\n', 2)[2]
 
         # We append the LLVM IR code of the 'Object' class
-        with open('llvm/object/object.ll', 'r') as object_file:
-            llvm_ir = object_file.read() + llvm_ir
+        llvm_ir = predefined.object_llvm + llvm_ir
 
         # We return the complete LLVM IR code
         return llvm_ir

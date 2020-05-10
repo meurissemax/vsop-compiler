@@ -1,0 +1,10 @@
+class Main {
+    useObject(obj : Object) : Object {
+        obj.print("Am I just an Object, or a real Main?\n")
+    }
+
+    main() : int32 {
+        let obj : Object <- self in useObject(obj);
+        0
+    }
+}

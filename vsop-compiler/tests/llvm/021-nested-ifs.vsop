@@ -1,0 +1,53 @@
+class Main {
+    n : int32;
+
+    guessN() : unit {
+        print("n = ").printInt32(n).print(", guess is ");
+        if n < 0 then print("n < 0")
+        else if 100 < n then print("n > 100")
+        else if n < 50 then
+            if n < 25 then
+                if n < 12 then
+                    if n < 6 then
+                        if n < 3 then
+                            if n < 2 then
+                                if n < 1 then print("n = 0")
+                                else print("n = 1")
+                            else print("n = 2")
+                        else // 3 <= n < 6
+                            if n < 4 then
+                                print("n = 3")
+                            else // 4 <= n < 6
+                                if n < 5 then print("n = 4")
+                                else print("n = 5")
+                    else // 6 <= n < 12
+                        if n < 9 then
+                            if n < 7 then print("n = 6")
+                            else // 7 <= n < 9
+                                if n < 8 then print("n = 7")
+                                else print("n = 8")
+                        else // 9 <= n < 12
+                            if n < 10 then print("n = 9")
+                            else // 10 <= n < 12
+                                if n < 11 then print("n = 10")
+                                else print("n = 11")
+                else print("12 <= n < 25") // ok, that's enough!
+            else print("25 <= n < 50")
+        else print("50 <= n <= 100");
+        print("\n");
+        ()
+    }
+
+    main() : int32 {
+        self.guessN(); // explicit dispatch through self, for a change
+        n <- 1; guessN();
+        n <- 2; guessN();
+        n <- 4; guessN();
+        n <- 8; guessN();
+        n <- 16; guessN();
+        n <- 32; guessN();
+        n <- 64; guessN();
+        n <- 128; guessN();
+        0
+    }
+}
