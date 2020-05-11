@@ -1,0 +1,58 @@
+class Player {
+	name : string;
+	cards : int32 <- 10;
+
+	set_name(s : string) : Object {
+		name <- s;
+
+		print("Name ").print(s).print(" assigned to player.\n")
+	}
+
+	get_name() : string {
+		name
+	}
+
+	add_card() : Object {
+		cards <- cards + 1;
+
+		print("Player ").print(name).print(" gets a new card!\n")
+	}
+
+	give_card(p : Player) : int32 {
+		print("Player ").print(name).print(" gives a card to player ").print(p.get_name()).print("\n");
+
+		p.add_card();
+		cards <- cards - 1
+	}
+
+	dump_number() : Object {
+		print("Player ").print(name).print(" has ").printInt32(cards).print(" card(s)\n")
+	}
+}
+
+class Main {
+	p1 : Player;
+	p2 : Player;
+
+	main() : int32 {
+		p1 <- new Player;
+		p2 <- new Player;
+
+		p1.set_name("Risitas");
+		p2.set_name("Chancla");
+
+		p1.dump_number();
+		p2.dump_number();
+
+		p1.give_card(p2);
+		p1.give_card(p2);
+		p1.give_card(p2);
+
+		p2.give_card(p1);
+
+		p1.dump_number();
+		p2.dump_number();
+
+		0
+	}
+}

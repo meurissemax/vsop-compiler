@@ -1,0 +1,26 @@
+class One {
+	s_one : string <- "Defined in class One !\n"; 
+}
+
+class Two extends Three {
+	s_two : string <- "Defined in class Two !\n"; 
+}
+
+class Three extends One {
+	s_three : string <- "Defined in class Three !\n";
+}
+
+class Four extends Three {
+	dump() : int32 {
+		print(s_one);
+		print(s_three);
+		0
+	}
+}
+
+class Main {
+	main() : int32 {
+		(new Four).dump();
+		0
+	}
+}

@@ -138,6 +138,8 @@
     
     For example, if a semicolon is required, we encode the grammar rule with the semicolon but also the one without the semicolon. The first rule will be tested and not matched. The second will then be tested and matched. We will then know that we are in the case of a forgotten semicolon and we will be able to display a corresponding error message.
     
+    We have obviously not encoded all the possible wrong grammar rules because there would be too many of them. We only encoded the frequent errors (forgetting a semicolon, forgetting the type, etc).
+    
     The parser, contrary to the general principle stated above, shows only one error. The display of several errors must be meticulously managed in order to be relevant. We didn't implement it at the beginning and we didn't have the time to go back and do it properly. So we decided to display only one error at a time.
     
     % ----- Semantic analysis ----- %

@@ -94,11 +94,23 @@ class Parser:
         """
         class : CLASS TYPE_IDENTIFIER class_body
               | CLASS TYPE_IDENTIFIER EXTENDS TYPE_IDENTIFIER class_body
+              | TYPE_IDENTIFIER class_body
+              | TYPE_IDENTIFIER EXTENDS TYPE_IDENTIFIER class_body
+              | CLASS class_body
+              | CLASS EXTENDS TYPE_IDENTIFIER class_body
         """
 
         # Get position of the element
         lineno = p.lineno(1)
         column = self.find_column(p.lexpos(1))
+
+        # If the keyword 'class' is missing
+        if p[1] != 'class':
+            self.print_error(lineno, column, 'missing "class" keyword')
+
+        # If the class identifier is missing
+        if p[1] == 'class' and (len(p) == 3 or len(p) == 5):
+            self.print_error(lineno, column, 'missing class identifier')
 
         # If we are in the 'extends' case
         if len(p) > 4:
@@ -130,7 +142,21 @@ class Parser:
         """
         class_body : LBRACE class_body_aux RBRACE
                    | LBRACE empty RBRACE
+                   | class_body_aux RBRACE
+                   | empty RBRACE
+                   | LBRACE class_body_aux
+                   | LBRACE empty
         """
+
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.find_column(p.lexpos(1))
+
+        # If a brace is missing
+        if p[1] != '{':
+            self.print_error(lineno, column, 'missing opening brace')
+        elif p[len(p) - 1] != '}':
+            self.print_error(lineno, column, 'missing corresponding closing brace')
 
         p[0] = p[2]
 
@@ -157,11 +183,17 @@ class Parser:
         """
         field : OBJECT_IDENTIFIER COLON type SEMICOLON
               | OBJECT_IDENTIFIER COLON type ASSIGN expr SEMICOLON
+              | OBJECT_IDENTIFIER COLON type
+              | OBJECT_IDENTIFIER COLON type ASSIGN expr
         """
 
         # Get position of the element
         lineno = p.lineno(1)
         column = self.find_column(p.lexpos(1))
+
+        # If semicolon is missing
+        if p[len(p) - 1] != ';':
+            self.print_error(lineno, column, 'missing semicolon at the end of the declaration')
 
         # If we are in the 'assign' case
         if len(p) > 5:
@@ -174,11 +206,16 @@ class Parser:
     def p_method(self, p):
         """
         method : OBJECT_IDENTIFIER LPAR formals RPAR COLON type block
+               | OBJECT_IDENTIFIER LPAR formals RPAR block
         """
 
         # Get position of the element
         lineno = p.lineno(1)
         column = self.find_column(p.lexpos(1))
+
+        # If return type is missing
+        if len(p) == 6:
+            self.print_error(lineno, column, 'missing return type in the declaration')
 
         # Create the method
         p[0] = Method(lineno, column, p[1], p[6], p[7])
@@ -221,11 +258,16 @@ class Parser:
     def p_formal(self, p):
         """
         formal : OBJECT_IDENTIFIER COLON type
+               | OBJECT_IDENTIFIER
         """
 
         # Get position of the element
         lineno = p.lineno(1)
         column = self.find_column(p.lexpos(1))
+
+        # If type of the formal is missing
+        if len(p) == 2:
+            self.print_error(lineno, column, 'missing formal type')
 
         # Create the formal
         p[0] = Formal(lineno, column, p[1], p[3])
@@ -278,11 +320,17 @@ class Parser:
         """
         expr : IF expr THEN expr
              | IF expr THEN expr ELSE expr
+             | IF expr expr
+             | IF expr expr ELSE expr
         """
 
         # Get position of the element
         lineno = p.lineno(1)
         column = self.find_column(p.lexpos(1))
+
+        # If 'then' keyword is missing
+        if p[3] != 'then':
+            self.print_error(lineno, column, 'missing "then" keyword')
 
         # If we are in the 'else' case
         if len(p) > 5:
@@ -295,11 +343,16 @@ class Parser:
     def p_expr_while(self, p):
         """
         expr : WHILE expr DO expr
+             | WHILE expr expr
         """
 
         # Get position of the element
         lineno = p.lineno(1)
         column = self.find_column(p.lexpos(1))
+
+        # If 'do' keyword is missing
+        if p[3] != 'do':
+            self.print_error(lineno, column, 'missing "do" keyword')
 
         # Create the while
         p[0] = While(lineno, column, p[2], p[4])
@@ -308,11 +361,17 @@ class Parser:
         """
         expr : LET OBJECT_IDENTIFIER COLON type IN expr
              | LET OBJECT_IDENTIFIER COLON type ASSIGN expr IN expr
+             | LET OBJECT_IDENTIFIER IN expr
+             | LET OBJECT_IDENTIFIER ASSIGN expr IN expr
         """
 
         # Get position of the element
         lineno = p.lineno(1)
         column = self.find_column(p.lexpos(1))
+
+        # If type is missing
+        if p[3] != ':':
+            self.print_error(lineno, column, 'type of the identifier is missing')
 
         # If we are in the 'assign' case
         if len(p) > 7:

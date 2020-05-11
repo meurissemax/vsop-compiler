@@ -1,0 +1,28 @@
+class A {
+    u : unit <- ();
+    f1 : int32 <- 1;
+    f2 : bool;
+}
+
+class B extends A {
+    ut : unit;
+    f3 : int32;
+    f4 : bool;
+    ut1 : unit <- ();
+
+    metUnit(u1 : unit, i1 : int32, u2 : unit, t : bool, u3 : unit) : unit {
+        u2;
+        t;
+        u3;
+        if true then print("ok\n");
+        u1 
+    }
+}
+
+class Main extends B {
+    main() : int32 {
+        metUnit((),2,(), true, ());
+        ut1;
+        1
+    }
+}
