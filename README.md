@@ -2,7 +2,7 @@
 
 ## Context
 
-The goal of this project was to build a small compiler for the **VSOP** language (created by C. Soldani and defined in the `vsop_manual.pdf` file).
+The goal of this project was to build a compiler for the **VSOP** language (created by C. Soldani and defined in the `vsop_manual.pdf` file).
 
 The compiler takes as input a `.vsop` file and generates as output a corresponding executable file. It also allows to view the output of each step (lexing, parsing, ...) separately. 
 
@@ -14,8 +14,8 @@ This VSOP compiler was done using **python** with the help, mainly, of the [PLY]
 
 Other libraries were also used :
 
-* argparse
-* llvmlite
+* [argparse](https://docs.python.org/3/library/argparse.html)
+* [llvmlite](https://github.com/numba/llvmlite)
 
 ## How to use the compiler ?
 
@@ -29,7 +29,7 @@ To install all the necessary tools (assuming python 3 is already installed), jus
 make install-tools
 ```
 
-To get a compiled version of the compiler, just do :
+To get a executable version of the compiler, just do :
 
 ```bash
 make vsopc

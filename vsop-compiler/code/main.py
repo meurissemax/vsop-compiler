@@ -18,10 +18,10 @@ import os
 import sys
 import argparse
 
-from lexer.vsop_lexer import Lexer
-from parser.vsop_parser import Parser
-from semantic.vsop_semantic import Semantic
-from llvm.vsop_llvm import LLVM
+from lexer.lexer import Lexer
+from parser.parser import Parser
+from semantic.semantic import Semantic
+from llvm.llvm import LLVM
 
 
 ########

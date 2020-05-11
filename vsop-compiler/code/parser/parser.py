@@ -8,8 +8,6 @@ Authors :
     - Valentin Vermeylen
 """
 
-# TODO : error handling (clean and meaningful error messages)
-
 ###########
 # Imports #
 ###########
@@ -17,7 +15,7 @@ Authors :
 import sys
 import ply.yacc as yacc
 
-from parser.vsop_ast import *
+from parser.ast import *
 
 
 ###########
@@ -29,21 +27,21 @@ class Parser:
     # Constructor #
     ###############
 
-    def __init__(self, filename, vsop_lexer):
+    def __init__(self, filename, lexer):
         # We save the filename (to print error)
-        self.__filename = filename
+        self.filename = filename
 
         # We get the file content
         with open(filename, 'r', encoding='ascii') as f:
             data = f.read()
 
         # We save the file content (to retrieve column of tokens)
-        self.__data = data
+        self.data = data
 
         # We save the argument values
-        self.__lexer = vsop_lexer.lexer
+        self.lexer = lexer.lexer
 
-        self.tokens = vsop_lexer.tokens
+        self.tokens = lexer.tokens
 
         # We remove some tokens from the token list
         # (it is not really useful but if we don't do
@@ -58,7 +56,7 @@ class Parser:
         self.tokens.remove('RIGHT_COMMENT')
 
         # Build the parser
-        self.parser = yacc.yacc(module=self, debug=False, tabmodule='vsop_parsetab')
+        self.parser = yacc.yacc(module=self, debug=False, tabmodule='parsetab')
 
     ####################
     # Precedence rules #
@@ -90,7 +88,7 @@ class Parser:
                 | class
         """
 
-        self.__ast.add_class(p[1])
+        self.ast.add_class(p[1])
 
     def p_class(self, p):
         """
@@ -100,7 +98,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # If we are in the 'extends' case
         if len(p) > 4:
@@ -163,7 +161,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # If we are in the 'assign' case
         if len(p) > 5:
@@ -180,7 +178,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the method
         p[0] = Method(lineno, column, p[1], p[6], p[7])
@@ -227,7 +225,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the formal
         p[0] = Formal(lineno, column, p[1], p[3])
@@ -239,7 +237,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the block
         p[0] = Block(lineno, column)
@@ -284,7 +282,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # If we are in the 'else' case
         if len(p) > 5:
@@ -301,7 +299,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the while
         p[0] = While(lineno, column, p[2], p[4])
@@ -314,7 +312,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # If we are in the 'assign' case
         if len(p) > 7:
@@ -331,7 +329,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the assign
         p[0] = Assign(lineno, column, p[1], p[3])
@@ -345,7 +343,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the unop
         p[0] = UnOp(lineno, column, p[1], p[2])
@@ -365,7 +363,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the binop
         p[0] = BinOp(lineno, column, p[2], p[1], p[3])
@@ -380,7 +378,7 @@ class Parser:
         if len(p) > 5:
             # Get position of the element
             lineno = p.lineno(3)
-            column = self.__find_column(p.lexpos(3))
+            column = self.find_column(p.lexpos(3))
 
             p[0] = Call(lineno, column, p[1], p[3])
             args = p[5]
@@ -389,7 +387,7 @@ class Parser:
         else:
             # Get position of the element
             lineno = p.lineno(1)
-            column = self.__find_column(p.lexpos(1))
+            column = self.find_column(p.lexpos(1))
 
             p[0] = Call(lineno, column, Self(lineno, column), p[1])
             args = p[3]
@@ -408,7 +406,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the new
         p[0] = New(lineno, column, p[2])
@@ -420,7 +418,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the object identifier
         p[0] = ObjectIdentifier(lineno, column, p[1])
@@ -439,7 +437,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the object identifier
         p[0] = Unit(lineno, column)
@@ -491,7 +489,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the literal
         p[0] = Literal(lineno, column, p[1], 'integer')
@@ -503,7 +501,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the literal
         p[0] = Literal(lineno, column, p[1], 'string')
@@ -516,7 +514,7 @@ class Parser:
 
         # Get position of the element
         lineno = p.lineno(1)
-        column = self.__find_column(p.lexpos(1))
+        column = self.find_column(p.lexpos(1))
 
         # Create the literal
         p[0] = Literal(lineno, column, p[1], 'boolean')
@@ -532,20 +530,20 @@ class Parser:
     # Error handling #
     ##################
 
-    def __print_error(self, lineno, column, message):
+    def print_error(self, lineno, column, message):
         """
         Prints an error on stderr in the right format
         and exits the parser.
         """
 
-        print('{}:{}:{}: syntax error: {}'.format(self.__filename, lineno, column, message), file=sys.stderr)
+        print('{}:{}:{}: syntax error: {}'.format(self.filename, lineno, column, message), file=sys.stderr)
         sys.exit(1)
 
     def p_error(self, p):
         # We get line and column information
         if p is not None:
             lineno = p.lineno
-            column = self.__find_column(p.lexpos)
+            column = self.find_column(p.lexpos)
             value = p.value
         else:
             lineno = 0
@@ -553,20 +551,20 @@ class Parser:
             value = 'unknown'
 
         # We print the message
-        self.__print_error(lineno, column, 'element "{}"'.format(value))
+        self.print_error(lineno, column, 'element "{}"'.format(value))
 
     ########################
     # Additional functions #
     ########################
 
-    def __find_column(self, lexpos):
+    def find_column(self, lexpos):
         """
         Returns the column of a token in a line
         based on his position relatively to
         the beginning of the file.
         """
 
-        line_start = self.__data.rfind('\n', 0, lexpos) + 1
+        line_start = self.data.rfind('\n', 0, lexpos) + 1
 
         return (lexpos - line_start) + 1
 
@@ -576,10 +574,10 @@ class Parser:
 
     def parse(self):
         # We instantiate the abstract syntax tree
-        self.__ast = Program()
+        self.ast = Program()
 
         # We parse the content of the file
-        self.parser.parse(input=self.__data, lexer=self.__lexer)
+        self.parser.parse(input=self.data, lexer=self.lexer)
 
         # We return the AST
-        return self.__ast
+        return self.ast

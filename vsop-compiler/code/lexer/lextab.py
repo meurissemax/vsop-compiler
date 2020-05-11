@@ -1,4 +1,4 @@
-# vsop_lextab.py. This file automatically created by PLY (version 3.11). Don't edit!
+# lextab.py. This file automatically created by PLY (version 3.11). Don't edit!
 _tabversion   = '3.10'
 _lextokens    = set(('AND', 'ASSIGN', 'BOOL', 'CLASS', 'COLON', 'COMMA', 'DIV', 'DO', 'DOT', 'ELSE', 'EQUAL', 'EXTENDS', 'FALSE', 'IDENTIFIER', 'IF', 'IN', 'INLINE_COMMENT', 'INT32', 'INTEGER_LITERAL', 'ISNULL', 'LBRACE', 'LEFT_COMMENT', 'LET', 'LOWER', 'LOWER_EQUAL', 'LPAR', 'MINUS', 'NEW', 'NON_TERMINATED_STRING_LITERAL', 'NOT', 'OBJECT_IDENTIFIER', 'OPERATOR', 'PLUS', 'POW', 'RBRACE', 'RIGHT_COMMENT', 'RPAR', 'SEMICOLON', 'STRING', 'STRING_LITERAL', 'THEN', 'TIMES', 'TRUE', 'TYPE_IDENTIFIER', 'UNIT', 'WHILE'))
 _lexreflags   = 64

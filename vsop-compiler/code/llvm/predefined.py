@@ -11,6 +11,10 @@ Authors :
 # This variable contains the LLVM IR code of the 'Object' class
 # written by C. Soldani.
 
+# The fact to store all the content in a variable is not very clean
+# but reading the 'object.ll' file on the platform was a problem,
+# so we opted for this solution.
+
 object_llvm = r"""
 ; This file is mostly generated from the C code, with just a touch of cleanup
 ; by hand to make it more portable and legible.
