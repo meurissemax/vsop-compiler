@@ -1,9 +1,0 @@
-class Main {
-    myField : int32;
-
-    main() : int32 {
-        true;
-        false;
-        0
-    }
-}

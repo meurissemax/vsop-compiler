@@ -1,0 +1,13 @@
+class A {
+    v : Object <- new Object;
+}
+
+class B extends A {
+    ut1 : unit <- if true then v.print("ok 1\n");
+}
+
+class Main extends B {
+    main() : int32 {
+        0
+    }
+}

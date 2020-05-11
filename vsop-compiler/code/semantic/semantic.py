@@ -355,7 +355,13 @@ class Semantic:
 
                 # If the expected return type is a 'class' type
                 else:
-                    if ret_type != block_type:
+
+                    # If the return type of the block is a primitive type
+                    if block_type in self.primitive_types:
+                        self.print_error(m.block.lineno, m.block.column, 'return type of the method "{}" is not conform with his signature ("{}" expected but "{}")'.format(m.name, ret_type, block_type))
+
+                    # If the return type of the block is a 'class' type
+                    elif ret_type != block_type:
                         block_type_ancestors = self.get_ancestors(block_type)
 
                         if ret_type not in block_type_ancestors:

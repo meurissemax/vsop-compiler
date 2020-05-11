@@ -1,4 +1,0 @@
-class {
-	isNil() : bool { true }
-	length() : int32 { 0 }
-}

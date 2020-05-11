@@ -1,0 +1,15 @@
+class Main {
+	x : int32 <- 40;
+
+	main() : int32 {
+		printInt32(x).print("\n");
+		
+		let x : int32 <- 42 in {
+			printInt32(x).print("\n")
+		};
+
+		printInt32(x).print("\n");
+
+		0
+	}
+}

@@ -1,0 +1,4 @@
+class MyClass {
+    myMethod() : int32 { 42 - "fifty" }
+}
+class Main { main() : int32 { 0 } }

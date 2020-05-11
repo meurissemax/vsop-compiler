@@ -62,6 +62,19 @@ class LLVM:
         self.builder = None
 
         # Dictionary that associates each class to its symbol table
+        # The structure of this dictionary is as follow :
+        # [class name] : [struct]        : obj
+        #                [struct_vtable] : obj
+        #                [global_vtable] : obj
+        #                [new]           : obj
+        #                [init]          : obj
+        #                [fields]        : [name] : [type]      : str
+        #                                           [init_expr] : obj
+        #                [methods]       : [name] : [args]      : [name] : str
+        #                                           [ret]       : str
+        #                                           [obj_type]  : obj
+        #                                           [obj]       : obj
+        #                [parent]        : str
         self.st = {}
 
         # Dictionary to store imported functions
@@ -343,6 +356,15 @@ class LLVM:
         for c in self.a_ast.classes:
             self.st[c.name]['struct'] = self.st[c.name]['struct'].as_pointer()
 
+            # We create the type of the init
+            init_type = ir.FunctionType(self.st[c.name]['struct'], (self.st[c.name]['struct'],))
+
+            # We create the init
+            init = ir.Function(self.module, init_type, name='{}_init'.format(c.name))
+
+            # We save the init
+            self.st[c.name]['init'] = init
+
     def initialize_object(self):
         # Opaque context reference to group modules into logical groups
         context = ir.Context()
@@ -431,12 +453,7 @@ class LLVM:
         # We get useful elements
         struct = self.st[name]['struct']
         parent = self.st[name]['parent']
-
-        # We create the type of the init
-        init_type = ir.FunctionType(struct, (struct,))
-
-        # We create the init
-        init = ir.Function(self.module, init_type, name='{}_init'.format(name))
+        init = self.st[name]['init']
 
         # We create the body of the init
         block = init.append_basic_block()
@@ -495,9 +512,6 @@ class LLVM:
         # We construct the 'endif' basic block
         self.builder.position_at_end(endif_bb)
         self.builder.ret(init.args[0])
-
-        # We save the init
-        self.st[name]['init'] = init
 
     def initialize_new(self, name):
         # We get useful elements

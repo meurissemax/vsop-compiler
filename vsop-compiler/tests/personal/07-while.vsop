@@ -1,0 +1,13 @@
+class Main {
+	i : int32 <- 0;
+
+	main() : int32 {
+		while i < 10 do {
+			printInt32(i).print("\n");
+			
+			i <- i + 1
+		};
+
+		0
+	}
+}

@@ -71,16 +71,23 @@ if __name__ == '__main__':
             print('main.py: error: "{}" does not exist'.format(source), file=sys.stderr)
             sys.exit(1)
 
-        # We instantiate lexer
+        # We tokenize the source file (remark : we do not save
+        # the token list because lexing is done implicitly in
+        # the parser after)
         vsop_lexer = Lexer(source)
 
         # If there is the '-lex' arg
         if args.lex:
-            vsop_lexer.dump_tokens()
+            vsop_lexer.lex(dump=True)
             sys.exit(0)
+        else:
+            vsop_lexer.lex()
 
         # If we get there, we parse the VSOP file (remark : lexing
-        # is done implicitly in the parsing)
+        # is done implicitly in the parsing so we reset the lexer
+        # in order to not have conflict with previous information
+        # of the last lexing)
+        vsop_lexer.reset()
         vsop_parser = Parser(source, vsop_lexer)
         ast = vsop_parser.parse()
 

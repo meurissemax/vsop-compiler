@@ -118,9 +118,6 @@ class Lexer:
         # Flag to handle the case of a lexing with error(s)
         self.has_error = False
 
-        # Build the lexer
-        self.lexer = lex.lex(module=self, optimize=1, lextab='lextab')
-
     #######################
     # Comments management #
     #######################
@@ -490,7 +487,14 @@ class Lexer:
     # Use the lexer #
     #################
 
-    def dump_tokens(self):
+    def reset(self):
+        # Build the lexer
+        self.lexer = lex.lex(module=self, optimize=1, lextab='lextab')
+
+    def lex(self, dump=False):
+        # We reset the lexer
+        self.reset()
+
         # We give the data as input to the lexer
         self.lexer.input(self.data)
 
@@ -513,8 +517,9 @@ class Lexer:
 
                 break
 
-            # Else, we print the token
-            else:
+            # Else, we save the token
+            elif dump:
+
                 # We get column and type of the token
                 t_column = self.find_column(token)
                 t_type = token.type.replace('_', '-')

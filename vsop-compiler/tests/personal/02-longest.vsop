@@ -1,1 +1,8 @@
-ifu42
+class Main {
+	ifu42 : int32 <- 42; // should detect it as an object identifier (and not 'if' + something)
+
+	main() : int32 {
+		printInt32(ifu42).print("\n");
+		0
+	}
+}

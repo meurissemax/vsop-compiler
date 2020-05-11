@@ -1,14 +1,24 @@
-// 45
-(* test of comment *)
-42
-(* another test of comment *)
-
 (*
-this is a comment
-
-int32 <- 42
-
-still
+Just some comments for fun !
 *)
 
-int32 <- 56
+class Main {
+	main() : int32 {
+		// 45
+		(* test of comment *)
+		print("OK\n");
+		(* another test of comment *)
+
+		(*
+		this is a comment
+
+		(* nested *)
+
+		print("KO\n");
+
+		still
+		*)
+
+		0
+	}
+}
