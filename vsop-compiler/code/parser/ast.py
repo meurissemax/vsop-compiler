@@ -14,11 +14,13 @@ Authors :
 ###########
 
 class Node:
-    # Parent class of all AST elements. Since Python does not
-    # support abstract classes natively, this class is not
-    # really useful.
+    """
+    Parent class of all AST elements. Since Python does not
+    support abstract classes natively, this class is not
+    really useful.
 
-    # For the sake of code clarity, we decided to keep it.
+    For the sake of code clarity, we decided to keep it.
+    """
 
     pass
 
@@ -134,7 +136,10 @@ class Formal(Node):
 
 
 class Expr(Node):
-    # Parent class of all expression elements.
+    """
+    Parent class of all expression elements.
+    """
+
     def __init__(self):
         self.expr_type = None
 
