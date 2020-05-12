@@ -200,6 +200,12 @@
     
     To manage the different contexts (when entering a method, or one or more "\texttt{let}") we used a stack on which we add and remove the symbol table of each context (just like for semantic analysis).
     
+    \subsection{The unit type}
+    
+    The \texttt{unit} type is represented by the \texttt{void} type in LLVM. However, the latter can only be used as the return type of a function. It is therefore not possible to directly use an element (field or argument of a method) of type \texttt{unit} (at the risk of causing compilation errors).
+    
+    To overcome this problem, we have simply ignored all \texttt{unit} elements in the LLVM generation and manually returned a \texttt{void} (in LLVM) when a \texttt{unit} element is encountered in the VSOP code. This avoids storage and allocation operations (\texttt{store} and \texttt{alloca}) on \texttt{void}, which is not allowed in LLVM.
+    
     \subsection{Error handling}
     
     In view of the various analyses carried out previously, this part is no longer supposed to generate errors. We have therefore written the code for this part without specifically implementing verification mechanisms (for example, when we retrieve the type of an element, we assume that this type exists and is valid, we do not verify it).
