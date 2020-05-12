@@ -123,13 +123,25 @@ class LLVM:
                 # We return the number of fields
                 return len(c.fields)
 
-    def get_position(self, d, name):
+    def get_position(self, d, name, field=True):
         # We iterate over the element of the dictionary
-        for i, k in enumerate(d.keys()):
+        i = 0
+        pos = 0
+
+        for key, value in d.items():
 
             # We check if we found the element
-            if k == name:
-                return i
+            if key == name:
+                return pos
+
+            # We increment the counter
+            i += 1
+
+            if field:
+                if value['type'] != 'unit':
+                    pos += 1
+            else:
+                pos += 1
 
     def lookup(self, stack, name):
         # We iterate over each element
@@ -271,7 +283,9 @@ class LLVM:
                 args_list = [self.st[c.name]['struct'].as_pointer()]
 
                 for t in value['args'].values():
-                    if t in ['int32', 'bool', 'string', 'unit', 'Object']:
+                    if t == 'unit':
+                        continue
+                    if t in ['int32', 'bool', 'string', 'Object']:
                         args_list += [self.get_type(t)]
                     else:
                         args_list += [self.get_type(t).as_pointer()]
@@ -328,7 +342,9 @@ class LLVM:
             fields_type_list = []
 
             for key, value in self.st[c.name]['fields'].items():
-                if value['type'] in ['int32', 'bool', 'string', 'unit', 'Object']:
+                if value['type'] == 'unit':
+                    continue
+                elif value['type'] in ['int32', 'bool', 'string', 'Object']:
                     fields_type_list += [self.get_type(value['type'])]
                 else:
                     fields_type_list += [self.st[value['type']]['struct'].as_pointer()]
@@ -479,8 +495,15 @@ class LLVM:
         # Initialize fields' value
         number_fields = len(self.st[name]['fields'])
 
+        pos = -1
+
         for i in range(number_fields - self.get_number_fields(name), number_fields):
             f = list(self.st[name]['fields'].values())[i]
+
+            if f['type'] == 'unit':
+                continue
+            else:
+                pos += 1
 
             if f['init_expr'] is not None:
                 init_val = self.codegen(f['init_expr'], [])
@@ -504,7 +527,7 @@ class LLVM:
                 else:
                     init_val = ir.Constant(self.st[f['type']]['struct'], None)
 
-            gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(i + 1)])
+            gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(pos + 1)])
             self.builder.store(init_val, gep)
 
         self.builder.branch(endif_bb)
@@ -602,17 +625,22 @@ class LLVM:
 
                     for name, f in d_method['args'].items():
 
-                        # We allocate space
-                        alloca = self.builder.alloca(args[i + 1].type)
+                        # We check if the argument is of type 'unit'
+                        if f != 'unit':
 
-                        # We store the value
-                        self.builder.store(args[i + 1], alloca)
+                            # We allocate space
+                            alloca = self.builder.alloca(args[i + 1].type)
 
-                        # We add the formal to the dictionnary
-                        d_args[name] = alloca
+                            # We store the value
+                            self.builder.store(args[i + 1], alloca)
 
-                        # We increment the counter
-                        i += 1
+                            # We add the formal to the dictionnary
+                            d_args[name] = alloca
+
+                            # We increment the counter
+                            i += 1
+                        else:
+                            d_args[name] = 'unit'
 
                 # We analyze the body of the method
                 value = self.codegen(m.block, [d_args])
@@ -880,7 +908,7 @@ class LLVM:
         d_method = d_class['methods'][node.method_name]
 
         # We get the position of the method in the VTable
-        method_offset = self.get_position(self.st[ptr_type]['methods'], node.method_name)
+        method_offset = self.get_position(self.st[ptr_type]['methods'], node.method_name, False)
 
         # We get the VTable
         gep_vtable = self.builder.gep(ptr_caller, [t_int32(0), t_int32(0)], inbounds=True)
@@ -898,7 +926,13 @@ class LLVM:
         args_list = [ptr_caller]
 
         # We iterate over each argument
-        for i, arg in enumerate(node.expr_list):
+        i = 0
+
+        for arg in node.expr_list:
+
+            # We check if arg is of type 'unit'
+            if arg.expr_type == 'unit':
+                continue
 
             # We get the value of the argument
             arg_value = self.codegen(arg, stack)
@@ -908,6 +942,9 @@ class LLVM:
 
             # We add the argument to the list
             args_list += [arg_value]
+
+            # We increment the counter
+            i += 1
 
         # We call the method
         return self.builder.call(method, args_list)
@@ -934,12 +971,20 @@ class LLVM:
         # argument of the function
         if e is not None:
 
+            # We check if the element is a 'unit'
+            if e == 'unit':
+                return t_unit
+
             # We store the value
             value = self.builder.load(e)
 
         # If the element does not exist, it means that it
         # is a field of the object
         else:
+
+            # We check if the element is a 'unit'
+            if self.st[self.current_class]['fields'][node.id]['type'] == 'unit':
+                return t_unit
 
             # We get the pointer to the element itself
             ptr_self = self.builder.load(self.lookup(stack, 'self'))
