@@ -839,18 +839,33 @@ class LLVM:
         # in this case, we do not evaluate directly both operands
         if node.op == 'and':
 
-            # We get left operand
+            # We allocate memory for return type
+            ptr_op = self.builder.alloca(t_bool)
+
+            # We evaluate left operand
             lhs = self.codegen(node.left_expr, stack)
 
-            if lhs == t_bool(1):
+            # We check branches
+            with self.builder.if_else(lhs) as (then, otherwise):
 
-                # We get right operand
-                rhs = self.codegen(node.right_expr, stack)
+                # If 'lhs' is true
+                with then:
 
-                if rhs == t_bool(1):
-                    return t_bool(1)
+                    # We evaluate right operand
+                    rhs = self.codegen(node.right_expr, stack)
 
-            return t_bool(0)
+                    # We cast the value
+                    v_cast = self.builder.bitcast(rhs, t_bool)
+
+                    # We store the value
+                    self.builder.store(v_cast, ptr_op)
+
+                # If 'lhs' is false
+                with otherwise:
+                    self.builder.store(t_bool(0), ptr_op)
+
+            # We return the value of the comparison
+            return self.builder.load(ptr_op)
         else:
             # We get left and right operands
             lhs = self.codegen(node.left_expr, stack)
@@ -1102,35 +1117,60 @@ class LLVMExt(LLVM):
     # Overriden methods
 
     def codegen_BinOp(self, node, stack):
-        # We check if we are in a 'and' case. We need to know because
-        # in this case, we do not evaluate directly both operands
+        # We check if we are in a 'and' (or 'or') case. We need to
+        # know because in this case, we do not evaluate directly
+        # both operands
         if node.op in ['and', 'or']:
 
-            # We get left operand
+            # We allocate memory for return type
+            ptr_op = self.builder.alloca(t_bool)
+
+            # We evaluate left operand
             lhs = self.codegen(node.left_expr, stack)
 
-            # If left operand is true
-            if lhs == t_bool(1):
+            # We check branches
+            with self.builder.if_else(lhs) as (then, otherwise):
 
-                # If it is 'or' operator, return true
-                if node.op == 'or':
-                    return t_bool(1)
+                # If 'lhs' is true
+                with then:
 
-                # Else we get right operand
-                rhs = self.codegen(node.right_expr, stack)
+                    # If operator is 'or'
+                    if node.op == 'or':
+                        self.builder.store(t_bool(1), ptr_op)
 
-                if rhs == t_bool(1):
-                    return t_bool(1)
+                    # If operator is 'and'
+                    if node.op == 'and':
 
-            # If left operand is false, we check if it is 'or'
-            # operator
-            elif node.op == 'or':
-                rhs = self.codegen(node.right_expr, stack)
+                        # We evaluate right operand
+                        rhs = self.codegen(node.right_expr, stack)
 
-                if rhs == t_bool(1):
-                    return t_bool(1)
+                        # We cast the value
+                        v_cast = self.builder.bitcast(rhs, t_bool)
 
-            return t_bool(0)
+                        # We store the value
+                        self.builder.store(v_cast, ptr_op)
+
+                # If 'lhs' is false
+                with otherwise:
+
+                    # If operator is 'and'
+                    if node.op == 'and':
+                        self.builder.store(t_bool(0), ptr_op)
+
+                    # If operator is 'or'
+                    if node.op == 'or':
+
+                        # We evaluate right operand
+                        rhs = self.codegen(node.right_expr, stack)
+
+                        # We cast the value
+                        v_cast = self.builder.bitcast(rhs, t_bool)
+
+                        # We store the value
+                        self.builder.store(v_cast, ptr_op)
+
+            # We return the value of the comparison
+            return self.builder.load(ptr_op)
         else:
             # We get left and right operands
             lhs = self.codegen(node.left_expr, stack)
