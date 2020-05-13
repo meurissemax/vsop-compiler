@@ -18,10 +18,10 @@ import os
 import sys
 import argparse
 
-from lexer.lexer import Lexer
-from parser.parser import Parser
-from semantic.semantic import Semantic
-from llvm.llvm import LLVM
+from lexer.lexer import Lexer, LexerExt
+from parser.parser import Parser, ParserExt
+from semantic.semantic import Semantic, SemanticExt
+from llvm.llvm import LLVM, LLVMExt
 
 
 ########
@@ -59,11 +59,11 @@ if __name__ == '__main__':
         source = args.source
 
         # We check the extension of the file
-        valid_ext = '.vsop'
-        source_ext = source[-len(valid_ext):]
+        valid_ext = ['.vsop', '.vsopext']
+        source_ext = os.path.splitext(source)[1]
 
-        if source_ext != valid_ext:
-            print('main.py: error: extension of the input file must be "{}"'.format(valid_ext), file=sys.stderr)
+        if source_ext not in valid_ext:
+            print('main.py: error: extension of the input file must be "{}" or "{}"'.format(valid_ext[0], valid_ext[1]), file=sys.stderr)
             sys.exit(1)
 
         # We check if the VSOP file exist
@@ -74,7 +74,10 @@ if __name__ == '__main__':
         # We tokenize the source file (remark : we do not save
         # the token list because lexing is done implicitly in
         # the parser after)
-        vsop_lexer = Lexer(source)
+        if args.ext:
+            vsop_lexer = LexerExt(source)
+        else:
+            vsop_lexer = Lexer(source)
 
         # If there is the '-lex' arg
         if args.lex:
@@ -88,7 +91,12 @@ if __name__ == '__main__':
         # in order to not have conflict with previous information
         # of the last lexing)
         vsop_lexer.reset()
-        vsop_parser = Parser(source, vsop_lexer)
+
+        if args.ext:
+            vsop_parser = ParserExt(source, vsop_lexer)
+        else:
+            vsop_parser = Parser(source, vsop_lexer)
+
         ast = vsop_parser.parse()
 
         # If there is the '-parse' arg
@@ -97,7 +105,11 @@ if __name__ == '__main__':
             sys.exit(0)
 
         # If we get there, we annotate the AST
-        vsop_semantic = Semantic(source, ast)
+        if args.ext:
+            vsop_semantic = SemanticExt(source, ast)
+        else:
+            vsop_semantic = Semantic(source, ast)
+
         a_ast = vsop_semantic.annotate()
 
         # If there is the '-check' arg
@@ -106,7 +118,11 @@ if __name__ == '__main__':
             sys.exit(0)
 
         # If we get there, we generate the LLVM IR code
-        vsop_llvm = LLVM(source, a_ast)
+        if args.ext:
+            vsop_llvm = LLVMExt(source, a_ast)
+        else:
+            vsop_llvm = LLVM(source, a_ast)
+
         llvm_ir = vsop_llvm.generate_ir()
 
         # If there is the '-llvm' arg

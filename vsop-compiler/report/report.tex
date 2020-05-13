@@ -216,11 +216,13 @@
     
     \section{Extensions}
     
-    We didn't have time to implement extensions because we started a bit late with the generation of the LLVM code. We are a bit disappointed about that.
+    We have implemented some extensions. For this, we created a class \texttt{<Name>Ext} for each tool. This class inherits from the \texttt{<Name>} class and overrides the fields and methods needed to add extensions.
     
-    If we had had the time, we would have started by adding the "\texttt{>}" and "\texttt{or}" operators and the "\texttt{double}" type. We would also have tried to implement a "\texttt{for}" loop.
+    For example, to add the \texttt{>} operator in semantic analysis, we created a \texttt{SemanticExt} class which inherits from the \texttt{Semantic} class and overrides the \texttt{analyze\_BinOp} method.
     
-    We had also thought about adding warning messages (for example, if an "\texttt{int32}" is used instead of a "\texttt{double}"). Just like in C, a warning message would not stop the creation of an executable.
+    \subsection{New operators}
+    
+    We have added the operators \texttt{>}, \texttt{>=} and \texttt{or} to the VSOP language. The \texttt{>} and \texttt{>=} operators have been implemented in the same way as \texttt{<} and \texttt{<=}. The \texttt{or} operator has been implemented in the same way as the \texttt{and} operator (the \texttt{or} operator is also lazy).
     
     % ----- Limitations and retrospective analysis ----- %
     

@@ -1,0 +1,10 @@
+class Main {
+	x : int32 <- 42;
+
+	main() : int32 {
+		if x > 20 then print("OK\n") else print("KO\n");
+		if x >= 20 then print("OK\n") else print("KO\n");
+
+		0
+	}
+}

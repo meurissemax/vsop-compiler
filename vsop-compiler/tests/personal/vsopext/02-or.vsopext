@@ -1,0 +1,18 @@
+class Main {
+	x : int32 <- 10;
+	y : int32 <- 5;
+	b : bool <- false;
+
+	main() : int32 {
+		// We check if 'or' is lazy (it should be)
+		printBool(b).print("\n");
+		if x < 20 or b <- true then print("OK\n") else print("KO\n");
+		printBool(b).print("\n");
+
+		// We check with false operand
+		if x < y or x < y - 4 then print("KO\n") else print("OK\n");
+		if x < y or y < x then print("OK\n") else print("KO\n");
+
+		0
+	}
+}

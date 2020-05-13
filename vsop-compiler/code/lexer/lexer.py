@@ -199,9 +199,9 @@ class Lexer:
 
         pass
 
-    ###################
-    # Token defintion #
-    ###################
+    ####################
+    # Token definition #
+    ####################
 
     # Tokens are ordered by priority.
     # It means that the first token (and so
@@ -533,3 +533,52 @@ class Lexer:
         # If there was error(s), we exit with an error code
         if self.has_error:
             sys.exit(1)
+
+
+class LexerExt(Lexer):
+    ###############
+    # Constructor #
+    ###############
+
+    def __init__(self, filename):
+        # We call the constructor of the parent class
+        super().__init__(filename)
+
+        # We define new operators
+        self.newop = {'>': 'GREATER', '>=': 'GREATER_EQUAL'}
+        self.operators.update(self.newop)
+
+        # We define new keywords
+        self.newkey = {'or' : 'OR'}
+        self.keywords.update(self.newkey)
+
+        # We list all the new elements
+        self.new = {}
+        self.new.update(self.newop)
+        self.new.update(self.newkey)
+
+        # We add the new elements to the token list
+        self.tokens += list(self.new.values())
+
+    ####################
+    # Token definition #
+    ####################
+
+    # Overriden methods
+
+    def t_OPERATOR(self, t):
+        r'{|}|\(|\)|:|;|,|\+|-|\*|/|\^|\.|<=|>=|<-|<|>|='
+
+        t.type = self.operators[t.value]
+
+        return t
+
+    #################
+    # Use the lexer #
+    #################
+
+    # Overriden methods
+
+    def reset(self):
+        # Build the lexer
+        self.lexer = lex.lex(module=self, optimize=1, lextab='lextabext')

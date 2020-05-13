@@ -640,3 +640,64 @@ class Parser:
 
         # We return the AST
         return self.ast
+
+
+class ParserExt(Parser):
+    ###############
+    # Constructor #
+    ###############
+
+    def __init__(self, filename, lexer):
+        # We call the constructor of the parent class
+        super().__init__(filename, lexer)
+
+        # Build the parser
+        self.parser = yacc.yacc(module=self, debug=False, tabmodule='parsetabext')
+
+    ####################
+    # Precedence rules #
+    ####################
+
+    # Overriden element
+
+    # Tokens are ordered from lowest to highest precedence
+    precedence = (
+        ('right', 'ASSIGN'),
+        ('left', 'AND', 'OR'),
+        ('right', 'NOT'),
+        ('nonassoc', 'LOWER', 'LOWER_EQUAL', 'GREATER', 'GREATER_EQUAL', 'EQUAL'),
+        ('left', 'PLUS', 'MINUS'),
+        ('left', 'TIMES', 'DIV'),
+        ('right', 'ISNULL'),
+        ('right', 'POW'),
+        ('left', 'DOT'),
+    )
+
+    #################
+    # Grammar rules #
+    #################
+
+    # Overriden methods
+
+    def p_expr_binop(self, p):
+        """
+        expr : expr AND expr
+             | expr OR expr
+             | expr EQUAL expr
+             | expr LOWER expr
+             | expr LOWER_EQUAL expr
+             | expr GREATER expr
+             | expr GREATER_EQUAL expr
+             | expr PLUS expr
+             | expr MINUS expr
+             | expr TIMES expr
+             | expr DIV expr
+             | expr POW expr
+        """
+
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.find_column(p.lexpos(1))
+
+        # Create the binop
+        p[0] = BinOp(lineno, column, p[2], p[1], p[3])
