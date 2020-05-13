@@ -1081,3 +1081,101 @@ class LLVM:
         # Compile assembly file to create an executable
         command = 'clang {}.s -o {} -lm'.format(basename, basename)
         os.system(command)
+
+
+class LLVMExt(LLVM):
+    ###############
+    # Constructor #
+    ###############
+
+    def __init__(self, filename, a_ast):
+        # We call the constructor of the parent class
+        super().__init__(filename, a_ast)
+
+    ###################
+    # Code generation #
+    ###################
+
+    # Overriden methods
+
+    def codegen_BinOp(self, node, stack):
+        # We check if we are in a 'and' case. We need to know because
+        # in this case, we do not evaluate directly both operands
+        if node.op in ['and', 'or']:
+
+            # We get left operand
+            lhs = self.codegen(node.left_expr, stack)
+
+            # If left operand is true
+            if lhs == t_bool(1):
+
+                # If it is 'or' operator, return true
+                if node.op == 'or':
+                    return t_bool(1)
+
+                # Else we get right operand
+                rhs = self.codegen(node.right_expr, stack)
+
+                if rhs == t_bool(1):
+                    return t_bool(1)
+
+            # If left operand is false, we check if it is 'or'
+            # operator
+            elif node.op == 'or':
+                rhs = self.codegen(node.right_expr, stack)
+
+                if rhs == t_bool(1):
+                    return t_bool(1)
+
+            return t_bool(0)
+        else:
+            # We get left and right operands
+            lhs = self.codegen(node.left_expr, stack)
+            rhs = self.codegen(node.right_expr, stack)
+
+            # We check according to the operator
+            if node.op == '=':
+                expr_type = node.left_expr.expr_type
+
+                if expr_type in ['int32', 'bool', 'integer', 'boolean']:
+                    return self.builder.icmp_signed('==', lhs, rhs)
+                elif expr_type == 'string':
+                    call = self.builder.call(self.imported_functions['strcmp'], [lhs, rhs])
+
+                    return self.builder.icmp_signed('==', call, t_int32(0))
+                elif expr_type == 'unit':
+                    return t_bool(1)
+                else:
+                    obj_type = self.st['Object']['struct']
+
+                    lhs_addr = self.builder.bitcast(lhs, obj_type)
+                    rhs_addr = self.builder.bitcast(rhs, obj_type)
+
+                    return self.builder.icmp_signed('==', lhs_addr, rhs_addr)
+            elif node.op == '<':
+                return self.builder.icmp_signed('<', lhs, rhs, 'lowtmp')
+            elif node.op == '<=':
+                return self.builder.icmp_signed('<=', lhs, rhs, 'loweqtmp')
+            elif node.op == '>':
+                return self.builder.icmp_signed('>', lhs, rhs, 'greattmp')
+            elif node.op == '>=':
+                return self.builder.icmp_signed('>=', lhs, rhs, 'greateqtmp')
+            elif node.op == '+':
+                return self.builder.add(lhs, rhs, 'addtmp')
+            elif node.op == '-':
+                return self.builder.sub(lhs, rhs, 'subtmp')
+            elif node.op == '*':
+                return self.builder.mul(lhs, rhs, 'multmp')
+            elif node.op == '/':
+                return self.builder.sdiv(lhs, rhs, 'divtmp')
+            elif node.op == '^':
+                # We cast the operands to 'double' (in order to call the
+                # 'pow' function)
+                lhs_double = self.builder.uitofp(lhs, t_double)
+                rhs_double = self.builder.uitofp(rhs, t_double)
+
+                # Call the 'pow' function
+                call = self.builder.call(self.imported_functions['pow'], (lhs_double, rhs_double))
+
+                # Return the result (converted to int)
+                return self.builder.fptoui(call, t_int32)

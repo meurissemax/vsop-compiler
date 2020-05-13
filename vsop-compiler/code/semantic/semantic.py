@@ -767,3 +767,74 @@ class Semantic:
         ###############
 
         return self.ast
+
+
+class SemanticExt(Semantic):
+    ###############
+    # Constructor #
+    ###############
+
+    def __init__(self, filename, ast):
+        # We call the constructor of the parent class
+        super().__init__(filename, ast)
+
+    ##########################
+    # Expressions management #
+    ##########################
+
+    # Overriden methods
+
+    def analyze_expr_BinOp(self, expr, stack):
+        # We get type of left and right expressions
+        left_type = self.analyze_expr(expr.left_expr, stack)
+        right_type = self.analyze_expr(expr.right_expr, stack)
+
+        # We get the binary operator
+        binop = expr.op
+
+        # We initialize the return type
+        ret_type = 'bool'
+
+        # If binary operator is '='
+        if binop == '=':
+            # If a operand has a primitive type
+            if left_type in self.primitive_types or right_type in self.primitive_types:
+                if left_type not in self.primitive_types:
+                    self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'invalid left expression type (non primitive type compared with a primitive type)')
+                elif right_type not in self.primitive_types:
+                    self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'invalid right expression type (non primitive type compared with a primitive type)')
+                elif left_type != right_type:
+                    self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'can not compare a value of type "{}" and a value of type "{}"'.format(left_type, right_type))
+
+        # If binary operator is a logical operator
+        elif binop in ['and', 'or']:
+            if left_type != 'bool':
+                self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "bool"')
+
+            if right_type != 'bool':
+                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "bool"')
+
+        # If binary operator is a comparison operator
+        elif binop in ['<', '<=', '>', '>=']:
+            if left_type != 'int32':
+                self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32"')
+
+            if right_type != 'int32':
+                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "int32"')
+
+        # If binary operator is an arithmetic operator
+        elif binop in ['+', '-', '*', '/', '^']:
+            if left_type != 'int32':
+                self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32"')
+
+            if right_type != 'int32':
+                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "int32"')
+
+            ret_type = 'int32'
+
+        # If binary operator is unknown
+        else:
+            self.print_error(expr.lineno, expr.column, 'unknown binary operator')
+
+        # We return the type of the expression
+        return ret_type
