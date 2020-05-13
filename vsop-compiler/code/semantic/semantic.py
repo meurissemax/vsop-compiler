@@ -756,10 +756,10 @@ class Semantic:
         # Expressions #
         ###############
 
-        # Analyze all fields'initializer
+        # Analyze all fields' initializer
         self.check_fields_initializer()
 
-        # Analyze all methods'block
+        # Analyze all methods' block
         self.check_methods_body()
 
         ###############

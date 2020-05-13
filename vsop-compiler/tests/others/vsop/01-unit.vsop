@@ -8,7 +8,7 @@ class B extends A {
     ut : unit;
     f3 : int32;
     f4 : bool;
-    ut1 : unit <- ();
+    ut1 : unit <- let x : Object <- new Object in { if true then x.print("ok1\n") };
 
     metUnit(u1 : unit, i1 : int32, u2 : unit, t : bool, u3 : unit) : unit {
         u2;
