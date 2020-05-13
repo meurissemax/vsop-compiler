@@ -41,22 +41,11 @@ class Parser:
         # We save the argument values
         self.lexer = lexer.lexer
 
+        # We get the token list
         self.tokens = lexer.tokens
 
-        # We remove some tokens from the token list
-        # (it is not really useful but if we don't do
-        # that, the parser will output some warning
-        # messages and so disturb the tests on the
-        # submission platform)
-        self.tokens.remove('IDENTIFIER')
-        self.tokens.remove('INLINE_COMMENT')
-        self.tokens.remove('LEFT_COMMENT')
-        self.tokens.remove('NON_TERMINATED_STRING_LITERAL')
-        self.tokens.remove('OPERATOR')
-        self.tokens.remove('RIGHT_COMMENT')
-
         # Build the parser
-        self.parser = yacc.yacc(module=self, debug=False, tabmodule='parsetab')
+        self.parser = yacc.yacc(module=self, debug=False, errorlog=yacc.NullLogger(), tabmodule='parsetab')
 
     ####################
     # Precedence rules #
@@ -652,7 +641,7 @@ class ParserExt(Parser):
         super().__init__(filename, lexer)
 
         # Build the parser
-        self.parser = yacc.yacc(module=self, debug=False, tabmodule='parsetabext')
+        self.parser = yacc.yacc(module=self, debug=False, errorlog=yacc.NullLogger(), tabmodule='parsetabext')
 
     ####################
     # Precedence rules #
