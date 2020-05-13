@@ -495,7 +495,7 @@ class LLVM:
         # Initialize fields' value
         number_fields = len(self.st[name]['fields'])
 
-        pos = -1
+        pos = number_fields - self.get_number_fields(name)
 
         for i in range(number_fields - self.get_number_fields(name), number_fields):
             f = list(self.st[name]['fields'].values())[i]
@@ -530,7 +530,7 @@ class LLVM:
                 else:
                     init_val = ir.Constant(self.st[f['type']]['struct'], None)
 
-            gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(pos + 1)])
+            gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(pos)])
             self.builder.store(init_val, gep)
 
         self.builder.branch(endif_bb)

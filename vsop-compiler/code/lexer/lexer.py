@@ -489,7 +489,7 @@ class Lexer:
 
     def reset(self):
         # Build the lexer
-        self.lexer = lex.lex(module=self, optimize=1, lextab='lextab')
+        self.lexer = lex.lex(module=self, optimize=1, errorlog=lex.NullLogger(), lextab='lextab')
 
     def lex(self, dump=False):
         # We reset the lexer
@@ -581,4 +581,4 @@ class LexerExt(Lexer):
 
     def reset(self):
         # Build the lexer
-        self.lexer = lex.lex(module=self, optimize=1, lextab='lextabext')
+        self.lexer = lex.lex(module=self, optimize=1, errorlog=lex.NullLogger(), lextab='lextabext')
