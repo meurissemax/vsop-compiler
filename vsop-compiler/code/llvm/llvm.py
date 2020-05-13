@@ -501,6 +501,9 @@ class LLVM:
             f = list(self.st[name]['fields'].values())[i]
 
             if f['type'] == 'unit':
+                if f['init_expr'] is not None:
+                    self.codegen(f['init_expr'], [])
+
                 continue
             else:
                 pos += 1
