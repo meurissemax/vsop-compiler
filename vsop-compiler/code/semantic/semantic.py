@@ -609,7 +609,7 @@ class Semantic:
 
         # If binary operator is unknown
         else:
-            self.print_error(expr.lineno, expr.column, 'unknown binary operator')
+            self.print_error(expr.left_expr.lineno, expr.right_expr.column, 'unknown binary operator')
 
         # We return the type of the expression
         return ret_type
@@ -620,7 +620,7 @@ class Semantic:
 
         # We check if the type of the 'caller' is 'None'
         if obj_type is None:
-            self.print_error(expr.obj_expr.lineno, expr.obj_expr.column, 'can not use "self" in a field initializer')
+            self.print_error(expr.obj_expr.lineno, expr.obj_expr.column, 'can not use a "self" element in a field initializer')
 
         # We check if the object type is a primitive type
         if obj_type in self.primitive_types:
@@ -778,11 +778,48 @@ class SemanticExt(Semantic):
         # We call the constructor of the parent class
         super().__init__(filename, ast)
 
+        # We define the list of primitive types
+        self.primitive_types = ['unit', 'bool', 'int32', 'string', 'double']
+
     ##########################
     # Expressions management #
     ##########################
 
     # Overriden methods
+
+    def analyze_expr_UnOp(self, expr, stack):
+        # We get the type of the expression
+        expr_type = self.analyze_expr(expr.expr, stack)
+
+        # We get the unary operator
+        unop = expr.op
+
+        # We initialize the return type
+        ret_type = expr_type
+
+        # If unary operator is 'not'
+        if unop == 'not':
+            if expr_type != 'bool':
+                self.print_error(expr.expr.lineno, expr.expr.column, 'expression type must be "bool"')
+
+        # If unary operator is '-'
+        elif unop == '-':
+            if expr_type not in ['int32', 'double']:
+                self.print_error(expr.expr.lineno, expr.expr.column, 'expression type must be "int32" or "double"')
+
+        # If unary operator is 'isnull'
+        elif unop == 'isnull':
+            if expr_type in self.primitive_types:
+                self.print_error(expr.expr.lineno, expr.expr.column, '"isnull" operator can not be used on a primitive type')
+
+            ret_type = 'bool'
+
+        # If unary operator is unknown
+        else:
+            self.print_error(expr.lineno, expr.column, 'unknown unary operator')
+
+        # We return the type of the expression
+        return ret_type
 
     def analyze_expr_BinOp(self, expr, stack):
         # We get type of left and right expressions
@@ -795,8 +832,8 @@ class SemanticExt(Semantic):
         # We initialize the return type
         ret_type = 'bool'
 
-        # If binary operator is '='
-        if binop == '=':
+        # If binary operator is '=' or '!='
+        if binop in ['=', '!=']:
             # If a operand has a primitive type
             if left_type in self.primitive_types or right_type in self.primitive_types:
                 if left_type not in self.primitive_types:
@@ -807,7 +844,7 @@ class SemanticExt(Semantic):
                     self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'can not compare a value of type "{}" and a value of type "{}"'.format(left_type, right_type))
 
         # If binary operator is a logical operator
-        elif binop in ['and', 'or']:
+        elif binop in ['and', 'or', '&&', '||']:
             if left_type != 'bool':
                 self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "bool"')
 
@@ -816,25 +853,54 @@ class SemanticExt(Semantic):
 
         # If binary operator is a comparison operator
         elif binop in ['<', '<=', '>', '>=']:
-            if left_type != 'int32':
-                self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32"')
+            if left_type not in ['int32', 'double']:
+                self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32" or "double"')
 
-            if right_type != 'int32':
-                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "int32"')
+            if right_type not in ['int32', 'double']:
+                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "int32" or "double"')
+
+            if left_type != right_type:
+                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of same type as left expression')
 
         # If binary operator is an arithmetic operator
         elif binop in ['+', '-', '*', '/', '^']:
-            if left_type != 'int32':
-                self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32"')
+            if left_type not in ['int32', 'double']:
+                self.print_error(expr.left_expr.lineno, expr.left_expr.column, 'left expression must be of type "int32" or "double"')
 
-            if right_type != 'int32':
-                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "int32"')
+            if right_type not in ['int32', 'double']:
+                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of type "int32" or "double"')
 
-            ret_type = 'int32'
+            if left_type != right_type:
+                self.print_error(expr.right_expr.lineno, expr.right_expr.column, 'right expression must be of same type as left expression')
+
+            ret_type = left_type
 
         # If binary operator is unknown
         else:
-            self.print_error(expr.lineno, expr.column, 'unknown binary operator')
+            self.print_error(expr.left_expr.lineno, expr.right_expr.column, 'unknown binary operator')
 
         # We return the type of the expression
         return ret_type
+
+    def analyze_expr_Literal(self, expr, stack):
+        literal_type = expr.type
+
+        # If literal is a 'integer-literal'
+        if literal_type == 'integer':
+            return 'int32'
+
+        # If literal is a 'string-literal'
+        elif literal_type == 'string':
+            return 'string'
+
+        # If literal is a 'boolean' literal
+        elif literal_type == 'boolean':
+            return 'bool'
+
+        # If literal is a 'double' literal
+        elif literal_type == 'double':
+            return 'double'
+
+        # If literal is unknown
+        else:
+            self.print_error(expr.lineno, expr.column, 'unknown literal')

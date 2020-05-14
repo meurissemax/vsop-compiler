@@ -652,9 +652,9 @@ class ParserExt(Parser):
     # Tokens are ordered from lowest to highest precedence
     precedence = (
         ('right', 'ASSIGN'),
-        ('left', 'AND', 'OR'),
+        ('left', 'AND', 'OR', 'AND_ALT', 'OR_ALT'),
         ('right', 'NOT'),
-        ('nonassoc', 'LOWER', 'LOWER_EQUAL', 'GREATER', 'GREATER_EQUAL', 'EQUAL'),
+        ('nonassoc', 'LOWER', 'LOWER_EQUAL', 'GREATER', 'GREATER_EQUAL', 'EQUAL', 'DIFF'),
         ('left', 'PLUS', 'MINUS'),
         ('left', 'TIMES', 'DIV'),
         ('right', 'ISNULL'),
@@ -668,11 +668,26 @@ class ParserExt(Parser):
 
     # Overriden methods
 
+    def p_type(self, p):
+        """
+        type : TYPE_IDENTIFIER
+             | INT32
+             | DOUBLE
+             | BOOL
+             | STRING
+             | UNIT
+        """
+
+        p[0] = p[1]
+
     def p_expr_binop(self, p):
         """
         expr : expr AND expr
+             | expr AND_ALT expr
              | expr OR expr
+             | expr OR_ALT expr
              | expr EQUAL expr
+             | expr DIFF expr
              | expr LOWER expr
              | expr LOWER_EQUAL expr
              | expr GREATER expr
@@ -690,3 +705,25 @@ class ParserExt(Parser):
 
         # Create the binop
         p[0] = BinOp(lineno, column, p[2], p[1], p[3])
+
+    def p_literal(self, p):
+        """
+        literal : integer_literal
+                | double_literal
+                | string_literal
+                | boolean_literal
+        """
+
+        p[0] = p[1]
+
+    def p_double_literal(self, p):
+        """
+        double_literal : DOUBLE_LITERAL
+        """
+
+        # Get position of the element
+        lineno = p.lineno(1)
+        column = self.find_column(p.lexpos(1))
+
+        # Create the literal
+        p[0] = Literal(lineno, column, p[1], 'double')

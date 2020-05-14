@@ -1,0 +1,18 @@
+class Main {
+	x : double <- 1.5;
+	y : double <- 1.6;
+
+	z : double;
+
+	main() : int32 {
+		z <- x + y;
+
+		if z = 3.1 then print("OK\n") else print("KO\n");
+		if z < 4.0 then print("OK\n") else print("KO\n");
+		if z > 2.5 then print("OK\n") else print("KO\n");
+
+		if z > 4.0 then print("KO\n") else print("OK\n");
+
+		0
+	}
+}

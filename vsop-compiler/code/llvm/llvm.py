@@ -93,6 +93,8 @@ class LLVM:
     def get_type(self, t):
         if t == 'int32':
             return t_int32
+        elif t == 'double':
+            return t_double
         elif t == 'bool':
             return t_bool
         elif t == 'string':
@@ -285,12 +287,12 @@ class LLVM:
                 for t in value['args'].values():
                     if t == 'unit':
                         continue
-                    if t in ['int32', 'bool', 'string', 'Object']:
+                    if t in ['int32', 'double', 'bool', 'string', 'Object']:
                         args_list += [self.get_type(t)]
                     else:
                         args_list += [self.get_type(t).as_pointer()]
 
-                if value['ret'] in ['int32', 'bool', 'string', 'unit', 'Object']:
+                if value['ret'] in ['int32', 'double', 'bool', 'string', 'unit', 'Object']:
                     ret_f = self.get_type(value['ret'])
                 else:
                     ret_f = self.get_type(value['ret']).as_pointer()
@@ -344,7 +346,7 @@ class LLVM:
             for key, value in self.st[c.name]['fields'].items():
                 if value['type'] == 'unit':
                     continue
-                elif value['type'] in ['int32', 'bool', 'string', 'Object']:
+                elif value['type'] in ['int32', 'double', 'bool', 'string', 'Object']:
                     fields_type_list += [self.get_type(value['type'])]
                 else:
                     fields_type_list += [self.st[value['type']]['struct'].as_pointer()]
@@ -513,6 +515,8 @@ class LLVM:
             else:
                 if f['type'] == 'int32':
                     init_val = ir.Constant(t_int32, 0)
+                elif f['type'] == 'double':
+                    init_val = ir.Constant(t_double, 0.0)
                 elif f['type'] == 'bool':
                     init_val = ir.Constant(t_bool, 0)
                 elif f['type'] == 'string':
@@ -1116,11 +1120,37 @@ class LLVMExt(LLVM):
 
     # Overriden methods
 
+    def initialize_primitives(self):
+        # We add primitives types to the symbol table
+        self.st['int32'] = {'struct': t_int32}
+        self.st['double'] = {'struct': t_double}
+        self.st['bool'] = {'struct': t_bool}
+        self.st['string'] = {'struct': t_string}
+        self.st['unit'] = {'struct': t_unit}
+
+    def codegen_UnOp(self, node, stack):
+        # We get the value of the expression
+        expr_value = self.codegen(node.expr, stack)
+
+        # We call the corresponding method
+        if node.op == 'not':
+            if expr_value == t_bool(1):
+                return t_bool(0)
+            else:
+                return t_bool(1)
+        elif node.op == '-':
+            if node.expr.expr_type == 'double':
+                return self.builder.sub(t_double(0.0), expr_value, 'subtmp')
+            else:
+                return self.builder.sub(t_int32(0), expr_value, 'subtmp')
+        elif node.op == 'isnull':
+            return self.builder.icmp_signed('==', expr_value, ir.Constant(self.get_type(node.expr.expr_type).as_pointer(), None))
+
     def codegen_BinOp(self, node, stack):
         # We check if we are in a 'and' (or 'or') case. We need to
         # know because in this case, we do not evaluate directly
         # both operands
-        if node.op in ['and', 'or']:
+        if node.op in ['and', 'or', '&&', '||']:
 
             # We allocate memory for return type
             ptr_op = self.builder.alloca(t_bool)
@@ -1135,11 +1165,11 @@ class LLVMExt(LLVM):
                 with then:
 
                     # If operator is 'or'
-                    if node.op == 'or':
+                    if node.op in ['or', '||']:
                         self.builder.store(t_bool(1), ptr_op)
 
                     # If operator is 'and'
-                    if node.op == 'and':
+                    if node.op in ['and', '&&']:
 
                         # We evaluate right operand
                         rhs = self.codegen(node.right_expr, stack)
@@ -1154,11 +1184,11 @@ class LLVMExt(LLVM):
                 with otherwise:
 
                     # If operator is 'and'
-                    if node.op == 'and':
+                    if node.op in ['and', '&&']:
                         self.builder.store(t_bool(0), ptr_op)
 
                     # If operator is 'or'
-                    if node.op == 'or':
+                    if node.op in ['or', '||']:
 
                         # We evaluate right operand
                         rhs = self.codegen(node.right_expr, stack)
@@ -1176,16 +1206,27 @@ class LLVMExt(LLVM):
             lhs = self.codegen(node.left_expr, stack)
             rhs = self.codegen(node.right_expr, stack)
 
+            # We get the comparison function
+            if node.left_expr.expr_type == 'double':
+                cmpfunc = self.builder.fcmp_ordered
+            else:
+                cmpfunc = self.builder.icmp_signed
+
             # We check according to the operator
-            if node.op == '=':
+            if node.op in ['=', '!=']:
+                if node.op == '=':
+                    llvmop = '=='
+                else:
+                    llvmop = '!='
+
                 expr_type = node.left_expr.expr_type
 
-                if expr_type in ['int32', 'bool', 'integer', 'boolean']:
-                    return self.builder.icmp_signed('==', lhs, rhs)
+                if expr_type in ['int32', 'double', 'bool', 'integer', 'boolean']:
+                    return cmpfunc(llvmop, lhs, rhs)
                 elif expr_type == 'string':
                     call = self.builder.call(self.imported_functions['strcmp'], [lhs, rhs])
 
-                    return self.builder.icmp_signed('==', call, t_int32(0))
+                    return cmpfunc(llvmop, call, t_int32(0))
                 elif expr_type == 'unit':
                     return t_bool(1)
                 else:
@@ -1194,23 +1235,35 @@ class LLVMExt(LLVM):
                     lhs_addr = self.builder.bitcast(lhs, obj_type)
                     rhs_addr = self.builder.bitcast(rhs, obj_type)
 
-                    return self.builder.icmp_signed('==', lhs_addr, rhs_addr)
+                    return cmpfunc(llvmop, lhs_addr, rhs_addr)
             elif node.op == '<':
-                return self.builder.icmp_signed('<', lhs, rhs, 'lowtmp')
+                return cmpfunc('<', lhs, rhs, 'lowtmp')
             elif node.op == '<=':
-                return self.builder.icmp_signed('<=', lhs, rhs, 'loweqtmp')
+                return cmpfunc('<=', lhs, rhs, 'loweqtmp')
             elif node.op == '>':
-                return self.builder.icmp_signed('>', lhs, rhs, 'greattmp')
+                return cmpfunc('>', lhs, rhs, 'greattmp')
             elif node.op == '>=':
-                return self.builder.icmp_signed('>=', lhs, rhs, 'greateqtmp')
+                return cmpfunc('>=', lhs, rhs, 'greateqtmp')
             elif node.op == '+':
-                return self.builder.add(lhs, rhs, 'addtmp')
+                if node.left_expr.expr_type == 'double':
+                    return self.builder.fadd(lhs, rhs, 'addtmp')
+                else:
+                    return self.builder.add(lhs, rhs, 'addtmp')
             elif node.op == '-':
-                return self.builder.sub(lhs, rhs, 'subtmp')
+                if node.left_expr.expr_type == 'double':
+                    return self.builder.fsub(lhs, rhs, 'subtmp')
+                else:
+                    return self.builder.sub(lhs, rhs, 'subtmp')
             elif node.op == '*':
-                return self.builder.mul(lhs, rhs, 'multmp')
+                if node.left_expr.expr_type == 'double':
+                    return self.builder.fmul(lhs, rhs, 'multmp')
+                else:
+                    return self.builder.mul(lhs, rhs, 'multmp')
             elif node.op == '/':
-                return self.builder.sdiv(lhs, rhs, 'divtmp')
+                if node.left_expr.expr_type == 'double':
+                    return self.builder.fdiv(lhs, rhs, 'divtmp')
+                else:
+                    return self.builder.sdiv(lhs, rhs, 'divtmp')
             elif node.op == '^':
                 # We cast the operands to 'double' (in order to call the
                 # 'pow' function)
@@ -1222,3 +1275,31 @@ class LLVMExt(LLVM):
 
                 # Return the result (converted to int)
                 return self.builder.fptoui(call, t_int32)
+
+    def codegen_Literal(self, node, stack):
+        # If literal is a 'int32'
+        if node.type == 'integer':
+            return t_int32(node.literal)
+
+        # If literal is a 'double'
+        elif node.type == 'double':
+            return t_double(node.literal)
+
+        # If literal is a 'bool'
+        elif node.type == 'boolean':
+            return t_bool(1 if node.literal == 'true' else 0)
+
+        # If literal is a 'string'
+        elif node.type == 'string':
+            string = self.process_string(node.literal)
+
+            string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(string)), bytearray(string.encode('utf8')))
+
+            global_val = ir.GlobalVariable(self.module, string_val.type, name='string_{}'.format(self.count_str))
+            global_val.linkage = ''
+            global_val.global_constant = True
+            global_val.initializer = string_val
+
+            self.count_str += 1
+
+            return self.builder.gep(global_val, [t_int32(0), t_int32(0)], inbounds=True)
