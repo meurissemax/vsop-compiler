@@ -1,0 +1,11 @@
+class Main {
+	x : int32 <- 5;
+	y : int32 <- 10;
+
+	main() : int32 {
+		if x != y then print("OK\n") else print("KO\n");
+		if (new Object) != (new Object) then print("OK\n") else print("KO\n");
+
+		0
+	}
+}

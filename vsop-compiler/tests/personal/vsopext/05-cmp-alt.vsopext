@@ -1,0 +1,11 @@
+class Main {
+	x : int32 <- 10;
+	y : int32 <- 5;
+
+	main() : int32 {
+		if x > y && y < x then print("OK\n") else print("KO\n");
+		if y > x || y < x then print("OK\n") else print("KO\n");
+
+		0
+	}
+}

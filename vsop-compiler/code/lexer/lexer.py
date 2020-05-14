@@ -545,12 +545,15 @@ class LexerExt(Lexer):
         super().__init__(filename)
 
         # We define new operators
-        self.newop = {'>': 'GREATER', '>=': 'GREATER_EQUAL'}
+        self.newop = {'>': 'GREATER', '>=': 'GREATER_EQUAL', '!=': 'DIFF', '&&': 'AND_ALT', '||': 'OR_ALT'}
         self.operators.update(self.newop)
 
         # We define new keywords
-        self.newkey = {'or' : 'OR'}
+        self.newkey = {'or': 'OR', 'double': 'DOUBLE', 'external': 'EXTERNAL'}
         self.keywords.update(self.newkey)
+
+        # We define new tokens
+        self.newtok = ['DOUBLE_LITERAL']
 
         # We list all the new elements
         self.new = {}
@@ -558,20 +561,104 @@ class LexerExt(Lexer):
         self.new.update(self.newkey)
 
         # We add the new elements to the token list
+        self.tokens += self.newtok
         self.tokens += list(self.new.values())
 
     ####################
     # Token definition #
     ####################
 
+    # New methods
+
+    def t_DOUBLE_LITERAL(self, t):
+        r'([0-9])+\.([0-9])*'
+
+        # We check if the value is a valid value
+        try:
+            t.value = float(t.value)
+
+            return t
+        except ValueError:
+            self.print_error(t.lineno, self.find_column(t), 'invalid double value {}'.format(t.value))
+
     # Overriden methods
 
+    def t_INTEGER_LITERAL(self, t):
+        r'([0-9]|0x)([0-9]|[a-z]|[A-Z])*'
+
+        # We check if the value is a decimal or
+        # hexadecimal value in order to make a
+        # clean conversion
+        if t.value[:2] == '0x':
+
+            # We check if the hexadecimal value
+            # is a valid value
+            try:
+                t.value = int(t.value, 16)
+
+                return t
+            except ValueError:
+                self.print_error(t.lineno, self.find_column(t), 'invalid hexadecimal integer {}'.format(t.value))
+        else:
+
+            # We check if the decimal value
+            # is a valid value
+            try:
+                t.value = int(t.value, 10)
+
+                return t
+            except ValueError:
+                self.print_error(t.lineno, self.find_column(t), 'invalid decimal integer {}'.format(t.value))
+
     def t_OPERATOR(self, t):
-        r'{|}|\(|\)|:|;|,|\+|-|\*|/|\^|\.|<=|>=|<-|<|>|='
+        r'{|}|\(|\)|:|;|,|\+|-|\*|/|\^|\.|<=|>=|<-|<|>|!=|=|&&|\|\|'
 
         t.type = self.operators[t.value]
 
         return t
+
+    def lex(self, dump=False):
+        # We reset the lexer
+        self.reset()
+
+        # We give the data as input to the lexer
+        self.lexer.input(self.data)
+
+        # Token classes for which we want to display the value
+        type_value = ('INTEGER_LITERAL', 'DOUBLE_LITERAL', 'TYPE_IDENTIFIER', 'OBJECT_IDENTIFIER', 'STRING_LITERAL')
+
+        # We tokenize
+        while True:
+            # We get the token
+            token = self.lexer.token()
+
+            # If there is no more token
+            if not token:
+
+                # If a multiple-line comment is not terminated,
+                # we print an error
+                if self.is_m_comment():
+                    (lineno, column) = self.m_comments.pop()
+                    self.print_error(lineno, column, 'multi-line comment not closed')
+
+                break
+
+            # Else, we save the token
+            elif dump:
+
+                # We get column and type of the token
+                t_column = self.find_column(token)
+                t_type = token.type.replace('_', '-')
+
+                # We print the token (in the right format)
+                if token.type in type_value:
+                    print('{},{},{},{}'.format(token.lineno, t_column, t_type.lower(), token.value))
+                else:
+                    print('{},{},{}'.format(token.lineno, t_column, t_type.lower()))
+
+        # If there was error(s), we exit with an error code
+        if self.has_error:
+            sys.exit(1)
 
     #################
     # Use the lexer #

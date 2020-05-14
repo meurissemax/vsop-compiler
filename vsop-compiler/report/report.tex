@@ -114,6 +114,8 @@
     
     For each grammar rule matched, the corresponding python function is called with the different elements of the grammar rule as arguments. Each function called creates a new node in the AST.
     
+    It should be noted that PLY takes care of the \emph{dangling else problem} natively, by resolving shift/reduce conflicts in favor of shifting, as is mentioned in the documentation.
+    
     \subsection{Abstract Syntax Tree}
     
     We have created a customized structure to generate the AST. For this, we used the object-oriented paradigm : each node of the tree is an object and contains references to its child nodes. The root node of the tree is an object called "\texttt{Program}". It is this object that will symbolize the AST.
@@ -222,7 +224,15 @@
     
     \subsection{New operators}
     
-    We have added the operators \texttt{>}, \texttt{>=} and \texttt{or} to the VSOP language. The \texttt{>} and \texttt{>=} operators have been implemented in the same way as \texttt{<} and \texttt{<=}. The \texttt{or} operator has been implemented in the same way as the \texttt{and} operator (the \texttt{or} operator is also lazy).
+    We have added the operators \texttt{>}, \texttt{>=}, \texttt{!=} and \texttt{or} to the VSOP language. The \texttt{>} and \texttt{>=} operators have been implemented in the same way as \texttt{<} and \texttt{<=}. The \texttt{or} operator has been implemented in the same way as the \texttt{and} operator (the \texttt{or} operator is also lazy) and the \texttt{!=} operator has been implemented in the same way as the \texttt{=} operator.
+    
+    We also have added the operators \texttt{\&\&} and \texttt{||} which are simply other ways to write (respectively) \texttt{and} and \texttt{or} operators.
+    
+    \subsection{New type}
+    
+    We added the "\texttt{double}" type. This one is quite restrictive : we did not allow mixed use between \texttt{int32} and \texttt{double} (for example, allow the sum of both). We have also not implemented any conversion mechanisms.
+    
+    Our goal was to add the \texttt{double} type and then do the FFI (\emph{Foreign Function Interface}) extension. In the end, we didn't have time to the latter, but we still left the \texttt{double} type.
     
     % ----- Limitations and retrospective analysis ----- %
     
@@ -231,6 +241,8 @@
     We are quite satisfied with the result obtained for our compiler. This seems to work in the vast majority of cases and is robust to fairly specific tests.
     
     However, we are a bit disappointed in the error handling. In the majority of cases, we failed to meet the principle we had set, which was to display several relevant errors. We realized that this was not an easy task and we didn't find the time to go back over it properly. Nevertheless, we are happy that we were able to implement relevant error messages in the majority of cases.
+    
+    We also made few extensions compared to what we wanted to achieve. Having started the last part a little late, we preferred to give our time to other projects. However, if we had to do it again, we would try more extensions !
     
     We spent a considerable amount of time on the last part : the generation of the LLVM code. The library being quite undocumented, we had a lot of trouble getting through it. In the end, we got a satisfactory result, but if we had to do it again, we would have done it sooner !
     
