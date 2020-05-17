@@ -534,8 +534,9 @@ class LLVM:
                 else:
                     init_val = ir.Constant(self.st[f['type']]['struct'], None)
 
+            bitcast = self.builder.bitcast(init_val, self.get_type(f['type']))
             gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(pos)])
-            self.builder.store(init_val, gep)
+            self.builder.store(bitcast, gep)
 
         self.builder.branch(endif_bb)
 
@@ -924,6 +925,9 @@ class LLVM:
 
         # We get the type (class name) of the caller
         ptr_type = node.obj_expr.expr_type
+
+        # We cast if necessary (dynamic dispatch)
+        ptr_caller = self.builder.bitcast(ptr_caller, self.get_type(ptr_type))
 
         # We get useful information
         d_class = self.st[ptr_type]
