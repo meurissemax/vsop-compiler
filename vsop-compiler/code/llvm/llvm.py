@@ -830,10 +830,23 @@ class LLVM:
 
         # We call the corresponding method
         if node.op == 'not':
-            if expr_value == t_bool(1):
-                return t_bool(0)
-            else:
-                return t_bool(1)
+
+            # We allocate memory for return type
+            ptr_op = self.builder.alloca(t_bool)
+
+            # We check branches
+            with self.builder.if_else(expr_value) as (then, otherwise):
+
+                # If 'expr_value' is true
+                with then:
+                    self.builder.store(t_bool(0), ptr_op)
+
+                # If 'expr_value' is false
+                with otherwise:
+                    self.builder.store(t_bool(1), ptr_op)
+
+            # We return the value of the comparison
+            return self.builder.load(ptr_op)
         elif node.op == '-':
             return self.builder.sub(t_int32(0), expr_value, 'subtmp')
         elif node.op == 'isnull':
