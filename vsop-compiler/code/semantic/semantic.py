@@ -95,15 +95,17 @@ class Semantic:
         # Check possible cycles
         for key, value in self.st.items():
             if key != 'Object':
-                c = key
                 parent = value.parent[0]
+                key_list = [key, parent]
 
                 while parent != 'Object':
                     c = parent
                     parent = self.st[c].parent[0]
 
-                    if parent == key:
+                    if parent in key_list:
                         self.print_error(value.lineno, value.column, 'class "{}" can not be extend in a cycle'.format(key))
+                    else:
+                        key_list += [parent]
 
         # Check that a 'Main' class is provided
         if 'Main' not in self.st:
@@ -126,12 +128,9 @@ class Semantic:
         class_1_ancestors = self.get_ancestors(class_name_1)
         class_2_ancestors = self.get_ancestors(class_name_2)
 
-        if class_name_1 in class_2_ancestors:
-            return class_name_1
-        elif class_name_2 in class_1_ancestors:
-            return class_name_2
-        else:
-            return None
+        common = [ancestors for ancestors in class_1_ancestors if ancestors in class_2_ancestors]
+
+        return common[0]
 
     def get_current_class(self, stack):
         # We iterate over each element of the stack
@@ -398,7 +397,7 @@ class Semantic:
             expr_type = getattr(self, method_name)(expr, stack)
 
         # We set the expression type (we update the node in the AST)
-        expr.set_expr_type(expr_type)
+        expr.expr_type = expr_type
 
         # We return the type of the expression
         return expr_type

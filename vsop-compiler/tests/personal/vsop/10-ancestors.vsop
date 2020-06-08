@@ -1,0 +1,12 @@
+class X { x : int32; }
+
+class A extends X { a : int32; }
+class B extends X { b : int32; }
+
+class Main {
+	main() : int32 {
+		if true then new A else new B;
+
+		0
+	}
+}
