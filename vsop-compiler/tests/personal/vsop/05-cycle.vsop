@@ -1,5 +1,5 @@
-class A extends C { a : int32; }
-class B extends A { b : int32; }
+class A extends B { a : int32; }
+class B extends C { b : int32; }
 class C extends B { c : int32; }
 
 class Main {

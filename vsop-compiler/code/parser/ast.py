@@ -143,9 +143,6 @@ class Expr(Node):
     def __init__(self):
         self.expr_type = None
 
-    def set_expr_type(self, expr_type):
-        self.expr_type = expr_type
-
 
 class If(Expr):
     def __init__(self, lineno, column, cond_expr, then_expr, else_expr):

@@ -2,7 +2,7 @@
 
 ## Context
 
-The goal of this project was to build a compiler for the **VSOP** language (created by C. Soldani and defined in the `vsop_manual.pdf` file).
+The goal of this project was to build a compiler for the **VSOP** (*Very Simple Object-oriented Programming*) language (created by C. Soldani, inspired by the [COOL](https://dl.acm.org/doi/abs/10.1145/381841.381847) language). More information is provided in the `vsop_manual.pdf` file.
 
 The compiler takes as input a `.vsop` file and generates as output a corresponding executable file. It also allows to view the output of each step (lexing, parsing, ...) separately. 
 
@@ -10,12 +10,12 @@ This project was realized as part of the *Compilers* course given by Professor *
 
 ## Language
 
-This VSOP compiler was done using **python** with the help, mainly, of the [PLY](https://www.dabeaz.com/ply/) tool.
+This VSOP compiler was done using **python** (version `3.7`) with the help, mainly, of the [PLY](https://www.dabeaz.com/ply/) tool (version `3.11`).
 
 Other libraries were also used :
 
 * [argparse](https://docs.python.org/3/library/argparse.html)
-* [llvmlite](https://github.com/numba/llvmlite)
+* [llvmlite](https://github.com/numba/llvmlite) (working with `llvm` version `8.0.x`)
 
 ## How to use the compiler ?
 

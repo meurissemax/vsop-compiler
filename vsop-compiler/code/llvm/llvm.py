@@ -182,6 +182,30 @@ class LLVM:
         # We return the processed string
         return ''.join(charbuf)
 
+    def default_init(self, t):
+        # We return the default value depending of the type
+
+        if t == 'int32' or t == t_int32:
+            return ir.Constant(t_int32, 0)
+        elif t == 'double' or t == t_double:
+            return ir.Constant(t_double, 0.0)
+        elif t == 'bool' or t == t_bool:
+            return ir.Constant(t_bool, 0)
+        elif t == 'string' or t == t_string:
+            string = '' + chr(0)
+            string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(string)), bytearray(string.encode('utf8')))
+
+            global_val = ir.GlobalVariable(self.module, string_val.type, name='string_{}'.format(self.count_str))
+            global_val.linkage = ''
+            global_val.global_constant = True
+            global_val.initializer = string_val
+
+            self.count_str += 1
+
+            return self.builder.gep(global_val, [t_int32(0), t_int32(0)], inbounds=True)
+        else:
+            return ir.Constant(self.st[t]['struct'], None)
+
     ##################
     # Initialization #
     ##################
@@ -513,26 +537,7 @@ class LLVM:
             if f['init_expr'] is not None:
                 init_val = self.codegen(f['init_expr'], [])
             else:
-                if f['type'] == 'int32':
-                    init_val = ir.Constant(t_int32, 0)
-                elif f['type'] == 'double':
-                    init_val = ir.Constant(t_double, 0.0)
-                elif f['type'] == 'bool':
-                    init_val = ir.Constant(t_bool, 0)
-                elif f['type'] == 'string':
-                    string = chr(0)
-                    string_val = ir.Constant(ir.ArrayType(ir.IntType(8), len(string)), bytearray(string.encode('utf8')))
-
-                    global_val = ir.GlobalVariable(self.module, string_val.type, name='string_{}'.format(self.count_str))
-                    global_val.linkage = ''
-                    global_val.global_constant = True
-                    global_val.initializer = string_val
-
-                    init_val = self.builder.gep(global_val, [t_int32(0), t_int32(0)], inbounds=True)
-
-                    self.count_str += 1
-                else:
-                    init_val = ir.Constant(self.st[f['type']]['struct'], None)
+                init_val = self.default_init(f['type'])
 
             bitcast = self.builder.bitcast(init_val, self.get_type(f['type']))
             gep = self.builder.gep(init.args[0], [t_int32(0), t_int32(pos)])
@@ -765,7 +770,7 @@ class LLVM:
         else:
 
             # We create a null value
-            value = ir.Constant(assignee_type, None)
+            value = self.default_init(assignee_type)
             self.builder.store(value, arg_ptr)
 
         # Create a new symbol table (dictionary) for the 'let'
