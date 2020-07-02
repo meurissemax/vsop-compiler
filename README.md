@@ -51,3 +51,7 @@ The various options available can be viewed via the command :
 
 * **Maxime Meurisse** - [meurissemax](https://github.com/meurissemax)
 * **Valentin Vermeylen** - [ValentinVermeylen](https://github.com/ValentinVermeylen)
+
+## Score
+
+* This project received a score of **18/20**.
